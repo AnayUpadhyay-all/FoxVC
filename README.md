@@ -1,44 +1,59 @@
-# FoxVC (v1.0.0)
+# FoxVC 🦊
+! A fast, lightweight, tool-chain and modern scripting language environment.
 
-> **Zero-Overlap Lean Programming Language**
-> *Engine Core: v0.5.2x | Baseline Release*
+---
 
-FoxVC is a lightweight, zero-overlap programming language designed for raw logic and fast simulation loops.
-It features a strict 25 zero-overlap keyword set with 0% syntactic overlap against Python, JavaScript, C/C++, Rust, and Lua.
+## �5 Step 1: Download FoxVC
 
-## Installation (Offline & Serverless)
+You do not need Git installed. Download the ready-to-run package:
 
-### Linux & macOS
-Run in terminal:
-  ./install.sh
+1. Click the green **`Code`** button at the top of this GitHub repository.
+2. Select **Download ZIP**.
+3. Extract `F/xVC-main.zip` anywhere on your system (e.g., Desktop or Home folder).
 
-### Windows
-Double-click install.bat or run it in Command Prompt.
+---
 
-## The 25 Zero-Overlap Keywords
+## ⚡️ Step 2: Installation
 
-act, emit, pack, mold, pick, alt, otherwise, pulse, cycle, spin,
-halt, skip, say, ask, guard, trap, fuse, lock, shift, blank,
-aye, nay, also, either, deny
+### 💧0inux & 🍏 macOS
+Open your Terminal inside the extracted folder and run:
 
-## Quick Example (main.fox)
+```bash
+chmod +x install.sh
+./install.sh
+```
 
-drone = { x: 0, speed: 15, active: aye }
-act travel(d, distance)
-    d.x += distance
-    emit d.x
+> The `foxvc` command is now available system-wide in all terminal windows! 🎈
 
-pick drone.active
-    travel(drone, 45)
-    say "Drone deployed to coordinate: " + drone.x
-otherwise
-    say "Drone systems inactive."
+### 🐟 Windows
+1. Open the extracted `F/xVC-main` folder.
+2. Double-click **`install.bat`**.
+3. Open Command Prompt (`cmd`) and start using `foxvc`.
 
-## Built-in Shelf Primitives
+---
 
-* Math: sin, cos, tan, sqrt, round, abs, pi
-* Clocks: time, sleep
-* Collections: len
+## 👀9Step 3: Run Your First Program
 
-## License
-MIT License. Nexus Systems.
+1. Create a file named `main.fox`:
+```foxvc
+say "Hello from FoxVC!"
+```
+
+2. Run it from your console:
+```bash
+foxvc run main.fox
+```
+
+---
+
+## 🌐 FoxVC Web Studio (Visual IDE)
+
+* **Linux / macOS:** `python3 run_web.py`
+* **Windows:** Double-click **`run_web.bat`**
+
+* Open your browser at: `http://localhost:8080`
+
+---
+
+## 📜 License
+This project is open-source under the [MIT License](LICENSE).
