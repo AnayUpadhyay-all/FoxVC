@@ -1,9 +1,0 @@
-load "spatial.expansion"
-load "sensor.optics"
-space DualTest
-    entity Satellite
-        form circle
-        diameter 20
-        thickness 2.0
-        apply Satellite linear_track span 60 period 3.0 direction "y"
-        apply Satellite beam_pulse period 1.5

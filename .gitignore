@@ -1,20 +1,29 @@
+
+*$py.class
+auto_test_suite.py
+*.before_web_fix
+build/
+deep_fuzz_audit.py
+dist/
+.DS_Store
+*.egg-info/
+engine_audit.py
+*.env
+.idea/
+*.log
+.ngrok_domain
+# OS & temp artifacts
+prepare_release.sh
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
 .Python
-build/
-dist/
-*.egg-info/
-venv/
-.venv/
-.vscode/
-.idea/
-*.swp
-*.tmp
-*.log
-deep_fuzz_audit.py
-auto_test_suite.py
-engine_audit.py
+# Python caches
+# Sensitive configs
 ship_check.py
-prepare_release.sh
+*.so
+*.swp
+Thumbs.db
+*.tmp
+.venv/
+venv/
+.vscode/

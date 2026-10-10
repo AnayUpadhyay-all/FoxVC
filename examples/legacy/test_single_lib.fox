@@ -1,5 +1,0 @@
-load "spatial.expansion"
-space OrbitalTest
-    entity Shuttle
-        form rect size 40 by 20
-        apply Shuttle linear_track span 80 period 4.0
