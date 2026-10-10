@@ -1,0 +1,5 @@
+space ReactorDashboard
+    entity Core form circle
+        anchor center at center
+    entity Telemetry form rect
+        beside Core direction east spacing 30

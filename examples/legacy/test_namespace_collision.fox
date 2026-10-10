@@ -1,0 +1,9 @@
+load "spatial.expansion" as spat
+load "sensor.optics" as opt
+space CollisionTest
+    entity AngularObject
+        form rect size 30 by 30
+        apply AngularObject spat.wobble period 2.0 amplitude 30.0
+    entity ScaleObject
+        form rect size 50 by 20
+        apply ScaleObject opt.wobble period 2.0 amplitude 25.0

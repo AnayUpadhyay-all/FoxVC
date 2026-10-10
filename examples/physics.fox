@@ -1,0 +1,5 @@
+call shelf "physics"
+m = 10
+a = 9.8
+f = force(m, a)
+say "Force: " + f

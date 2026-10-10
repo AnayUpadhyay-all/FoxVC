@@ -1,0 +1,5 @@
+# FoxVC Variables & Output
+name = "Fox"
+age = 15
+say name
+say age

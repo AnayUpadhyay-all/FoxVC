@@ -1,0 +1,78 @@
+# FoxVC v0.3.1 — Real-World Mathematical & Scientific Calculation System
+# Zero commas, zero semicolons, zero apostrophes.
+
+say "=== FoxVC v0.3.1 Scientific Calculation System ==="
+
+# 1. Variable Reassignment & Accumulators
+balance = 1000
+deposit = 250.50
+balance = balance + deposit
+fee = 10.25
+balance = balance - fee
+say "Account balance after reassignment: " + balance
+
+# 2. Distance, Speed, and Time Chains
+distance = 120
+time = 8
+speed = distance / time
+trip_hours = 15
+distance2 = speed * trip_hours
+time2 = distance2 / speed
+say "Calculated speed (km/h): " + speed
+say "Trip 2 distance (km): " + distance2
+say "Trip 2 duration (h): " + time2
+
+# 3. Percentages & Financial Calculations
+principal = 5000
+annual_rate = 0.075
+years = 3
+simple_interest = principal * annual_rate * years
+total_amount = principal + simple_interest
+discount_rate = 0.10
+discounted_total = total_amount * (1 - discount_rate)
+say "Simple interest accrued: " + simple_interest
+say "Total amount: " + total_amount
+say "Discounted total (10% off): " + discounted_total
+
+# 4. Geometry (Trapezoid Area & Cylinder Volume)
+# Trapezoid Area: ((a + b) / 2) * h
+base_a = 14.5
+base_b = 25.5
+height = 10
+trapezoid_area = ((base_a + base_b) / 2) * height
+say "Trapezoid Area: " + trapezoid_area
+
+# Cylinder Volume: pi * r^2 * h
+pi = 3.14159
+radius = 4
+cylinder_volume = (
+    pi * (radius * radius) * height
+)
+say "Cylinder Volume: " + cylinder_volume
+
+# 5. Physics: Acceleration, Force, and Kinematics
+# v = u + a * t
+initial_velocity = 0
+acceleration = 9.8
+fall_time = 4.5
+final_velocity = initial_velocity + (acceleration * fall_time)
+
+# Kinetic Energy: 0.5 * m * v^2
+mass = 80
+kinetic_energy = 0.5 * mass * (final_velocity * final_velocity)
+
+# Potential Energy: m * g * h
+falling_height = (0.5 * acceleration * (fall_time * fall_time))
+potential_energy = mass * acceleration * falling_height
+
+say "Final velocity (m/s): " + final_velocity
+say "Falling distance (m): " + falling_height
+say "Kinetic energy (J): " + kinetic_energy
+say "Initial potential energy (J): " + potential_energy
+say "Energy balance check (approx equal): " + (kinetic_energy == potential_energy)
+
+# 6. Negative Numbers & Temperature Conversion
+celsius = -15
+fahrenheit = (celsius * (9 / 5)) + 32
+say "Celsius: " + celsius
+say "Fahrenheit: " + fahrenheit

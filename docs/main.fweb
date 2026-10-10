@@ -1,0 +1,378 @@
+# FoxVC Documentation & Interactive Showcase
+use "design.fskin"
+use "app.flogic"
+
+app = element "page"
+set app "title" "FoxVC Documentation Platform"
+apply app AppPage
+
+# 1. Header & Navigation Bar
+top = element "header"
+apply top TopBar
+
+brand = element "container"
+apply brand BrandArea
+
+brand_box = element "container"
+brand_name = element "heading" "🦊 FoxVC"
+apply brand_name BrandName
+brand_sub = element "text" "General-Purpose Language & Native Web Platform"
+apply brand_sub BrandSub
+add brand_box brand_name
+add brand_box brand_sub
+
+nav = element "nav"
+apply nav MainNav
+
+nav_intro = element "link" "Overview"
+apply nav_intro NavLink
+apply nav_intro NavLinkHover
+
+nav_fox = element "link" ".FOX Core"
+apply nav_fox NavLink
+apply nav_fox NavLinkHover
+
+nav_fweb = element "link" "FWEB"
+apply nav_fweb NavLink
+apply nav_fweb NavLinkHover
+
+nav_fskin = element "link" "FSKIN"
+apply nav_fskin NavLink
+apply nav_fskin NavLinkHover
+
+nav_flogic = element "link" "FLOGIC"
+apply nav_flogic NavLink
+apply nav_flogic NavLinkHover
+
+nav_runtime = element "link" "Runtime"
+apply nav_runtime NavLink
+apply nav_runtime NavLinkHover
+
+nav_about = element "link" "About"
+apply nav_about NavLink
+apply nav_about NavLinkHover
+
+add nav nav_intro
+add nav nav_fox
+add nav nav_fweb
+add nav nav_fskin
+add nav nav_flogic
+add nav nav_runtime
+add nav nav_about
+
+add brand brand_box
+add brand nav
+add top brand
+add app top
+
+# 2. Hero Section
+hero = element "section"
+set hero "name" "hero"
+apply hero Hero
+apply hero HeroMobile
+
+hero_tag = element "text" "OFFICIAL LANGUAGE SPECIFICATION & ENGINE"
+apply hero_tag Eyebrow
+
+hero_title = element "heading" "One Coherent Language from Scripting to Web."
+apply hero_title HeroTitle
+
+hero_text = element "text" "FoxVC is an independent programming language and native runtime. Write clean, deterministic algorithms in standalone .fox source files, or build rich graphical and interactive applications through declarative web architecture."
+apply hero_text HeroText
+
+hero_button = element "button" "Explore Core Language ↓"
+apply hero_button PrimaryButton
+apply hero_button PrimaryButtonHover
+
+add hero hero_tag
+add hero hero_title
+add hero hero_text
+add hero hero_button
+add app hero
+
+# 3. Core Language Section (.fox Scripting)
+fox_core = element "section"
+set fox_core "name" "fox_core"
+apply fox_core Section
+apply fox_core SectionMobile
+
+core_header = element "container"
+apply core_header SectionHeader
+core_title = element "heading" "Core Scripting with .FOX"
+apply core_title SectionTitle
+core_sub = element "text" "Before building interfaces, FoxVC functions as a standalone, deterministic programming environment designed for clarity, calculation, and data flow without unnecessary ceremony."
+apply core_sub BodyText
+add core_header core_title
+add core_header core_sub
+add fox_core core_header
+
+core_deck = element "container"
+apply core_deck GridDeck
+
+# Card 1: Variables & Numbers
+c_card1 = element "card"
+apply c_card1 FeatureCard
+apply c_card1 FeatureCardHover
+cb1 = element "text" "PRIMITIVES"
+apply cb1 CardBadge
+c_card1_title = element "heading" "Variables & Numbers"
+apply c_card1_title CardTitle
+c_card1_text = element "text" "Declare variables with clear assignments. Numeric types operate with strict precision and deterministic normalization without unexpected coercion."
+apply c_card1_text CardText
+add c_card1 cb1
+add c_card1 c_card1_title
+add c_card1 c_card1_text
+
+# Card 2: Clean Math
+c_card2 = element "card"
+apply c_card2 FeatureCard
+apply c_card2 FeatureCardHover
+cb2 = element "text" "CALCULATION"
+apply cb2 CardBadge
+c_card2_title = element "heading" "Mathematical Precision"
+apply c_card2_title CardTitle
+c_card2_text = element "text" "Perform arithmetic, comparisons, and boolean logic using straightforward operators that evaluate consistently across every machine architecture."
+apply c_card2_text CardText
+add c_card2 cb2
+add c_card2 c_card2_title
+add c_card2 c_card2_text
+
+# Card 3: Interactive I/O
+c_card3 = element "card"
+apply c_card3 FeatureCard
+apply c_card3 FeatureCardHover
+cb3 = element "text" "I/O FLOW"
+apply cb3 CardBadge
+c_card3_title = element "heading" "Native Communication"
+apply c_card3_title CardTitle
+c_card3_text = element "text" "Communicate via say for direct output and ask for interactive input prompts, giving standalone tools immediate interactivity."
+apply c_card3_text CardText
+add c_card3 cb3
+add c_card3 c_card3_title
+add c_card3 c_card3_text
+
+add core_deck c_card1
+add core_deck c_card2
+add core_deck c_card3
+add fox_core core_deck
+
+# Scripting Console Example
+fox_code_card = element "card"
+apply fox_code_card CodeCard
+fox_code_title = element "heading" "STANDALONE SCRIPT / CALCULATION.FOX"
+apply fox_code_title CodeTitle
+fox_code_text = element "text" "# Mathematical script in pure .fox\nspeed = 240\ntime = 12\nvelocity = speed / time\nsay velocity\n\nstatus = velocity > 15\nsay status"
+apply fox_code_text CodeText
+add fox_code_card fox_code_title
+add fox_code_card fox_code_text
+add fox_core fox_code_card
+
+fox_note = element "text" "✦ Execute standalone scripts directly via the engine runner or Studio (F5) to produce direct console output without launching a browser window."
+apply fox_note MutedText
+add fox_core fox_note
+
+add app fox_core
+
+# 4. Architecture Pillars (FWEB, FSKIN, FLOGIC)
+compare = element "section"
+set compare "name" "compare"
+apply compare Section
+apply compare SectionMobile
+
+comp_header = element "container"
+apply comp_header SectionHeader
+comp_title = element "heading" "Web Application Layers"
+apply comp_title SectionTitle
+comp_sub = element "text" "When extending into user interfaces, FoxVC organizes applications into dedicated structural, visual, and behavioral tiers."
+apply comp_sub BodyText
+add comp_header comp_title
+add comp_header comp_sub
+add compare comp_header
+
+pillars_deck = element "container"
+apply pillars_deck GridDeck
+
+# Pillar 1: FWEB
+card1 = element "card"
+apply card1 FeatureCard
+apply card1 FeatureCardHover
+badge1 = element "text" "STRUCTURE"
+apply badge1 CardBadge
+card1_title = element "heading" "FWEB Web Model"
+apply card1_title CardTitle
+card1_text = element "text" "Construct hierarchy, cards, text, controls, inputs, and documents using native element and add instructions."
+apply card1_text CardText
+add card1 badge1
+add card1 card1_title
+add card1 card1_text
+
+# Pillar 2: FSKIN
+card2 = element "card"
+apply card2 FeatureCard
+apply card2 FeatureCardHover
+badge2 = element "text" "STYLING & LAYOUT"
+apply badge2 CardBadge
+card2_title = element "heading" "FSKIN Cascade"
+apply card2_title CardTitle
+card2_text = element "text" "Control visual design, CSS Grid, Flexbox, hover states, and responsive breakpoints using FoxVC visual rules."
+apply card2_text CardText
+add card2 badge2
+add card2 card2_title
+add card2 card2_text
+
+# Pillar 3: FLOGIC
+card3 = element "card"
+apply card3 FeatureCard
+apply card3 FeatureCardHover
+badge3 = element "text" "REACTIVE LOGIC"
+apply badge3 CardBadge
+card3_title = element "heading" "FLOGIC Engine"
+apply card3_title CardTitle
+card3_text = element "text" "Connect user interactions, state persistence, timers, and lifecycle operations in real-time."
+apply card3_text CardText
+add card3 badge3
+add card3 card3_title
+add card3 card3_text
+
+add pillars_deck card1
+add pillars_deck card2
+add pillars_deck card3
+add compare pillars_deck
+add app compare
+
+# 5. Quick Start Console
+quick = element "section"
+set quick "name" "quick"
+apply quick Section
+apply quick SectionMobile
+
+quick_header = element "container"
+apply quick_header SectionHeader
+quick_title = element "heading" "First Web Application"
+apply quick_title SectionTitle
+quick_desc = element "text" "A complete web application constructed with clean, readable declarations:"
+apply quick_desc BodyText
+add quick_header quick_title
+add quick_header quick_desc
+add quick quick_header
+
+code1 = element "card"
+apply code1 CodeCard
+code1_title = element "heading" "CONSOLE / MAIN.FWEB"
+apply code1_title CodeTitle
+code1_text = element "text" "app = element \"page\"\ntitle = element \"heading\" \"Hello FoxVC\"\nmessage = element \"text\" \"My first FoxVC application.\"\nadd app title\nadd app message\nmount app"
+apply code1_text CodeText
+add code1 code1_title
+add code1 code1_text
+
+quick_note = element "text" "✦ The FoxVC runtime builds the live web tree in memory and serves it directly over localhost with zero disk files."
+apply quick_note MutedText
+
+add quick code1
+add quick quick_note
+add app quick
+
+# 6. Pipeline Architecture
+architecture = element "section"
+set architecture "name" "architecture"
+apply architecture Section
+apply architecture SectionMobile
+
+arch_header = element "container"
+apply arch_header SectionHeader
+arch_title = element "heading" "Unified Engine Pipeline"
+apply arch_title SectionTitle
+arch_sub = element "text" "How source code flows through the system for both .fox scripts and .fweb applications:"
+apply arch_sub BodyText
+add arch_header arch_title
+add arch_header arch_sub
+add architecture arch_header
+
+arch_deck = element "container"
+apply arch_deck GridDeck
+
+step1 = element "card"
+apply step1 FeatureCard
+apply step1 FeatureCardHover
+s1_badge = element "text" "STAGE 01"
+apply s1_badge CardBadge
+step1_title = element "heading" "Source Parsing"
+apply step1_title CardTitle
+step1_text = element "text" "The lexer and parser tokenize instructions into a structured abstract syntax tree."
+apply step1_text CardText
+add step1 s1_badge
+add step1 step1_title
+add step1 step1_text
+
+step2 = element "card"
+apply step2 FeatureCard
+apply step2 FeatureCardHover
+s2_badge = element "text" "STAGE 02"
+apply s2_badge CardBadge
+step2_title = element "heading" "Interpretation"
+apply step2_title CardTitle
+step2_text = element "text" "Evaluates expressions, assigns environment state, and builds data or visual structures."
+apply step2_text CardText
+add step2 s2_badge
+add step2 step2_title
+add step2 step2_text
+
+step3 = element "card"
+apply step3 FeatureCard
+apply step3 FeatureCardHover
+s3_badge = element "text" "STAGE 03"
+apply s3_badge CardBadge
+step3_title = element "heading" "Target Resolution"
+apply step3_title CardTitle
+step3_text = element "text" "Outputs directly to standard console for .fox scripts, or synthesizes CSS and event handlers for .fweb."
+apply step3_text CardText
+add step3 s3_badge
+add step3 step3_title
+add step3 step3_text
+
+step4 = element "card"
+apply step4 FeatureCard
+apply step4 FeatureCardHover
+s4_badge = element "text" "STAGE 04"
+apply s4_badge CardBadge
+step4_title = element "heading" "Live Runtime"
+apply step4_title CardTitle
+step4_text = element "text" "Provides synchronous console feedback or streams in-memory live web documents."
+apply step4_text CardText
+add step4 s4_badge
+add step4 step4_title
+add step4 step4_text
+
+add arch_deck step1
+add arch_deck step2
+add arch_deck step3
+add arch_deck step4
+add architecture arch_deck
+add app architecture
+
+# 7. About & Vision
+about = element "section"
+set about "name" "about"
+apply about Section
+apply about SectionMobile
+
+about_header = element "container"
+apply about_header SectionHeader
+about_title = element "heading" "Philosophy & Design"
+apply about_title SectionTitle
+about_text = element "text" "FoxVC is created by Nexus Systems and designed by Anay Upadhyay. It is built on the belief that a programming language should be self-contained, expressive, and predictable—unifying general computing logic and modern web software under one syntax."
+apply about_text BodyText
+add about_header about_title
+add about_header about_text
+add about about_header
+
+add app about
+
+# 8. Document Footer
+footer = element "footer"
+apply footer Footer
+footer_text = element "text" "FoxVC Documentation Platform • Nexus Systems • Language & Runtime v0.3.7"
+add footer footer_text
+add app footer
+
+mount app

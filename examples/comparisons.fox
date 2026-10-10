@@ -1,0 +1,5 @@
+# FoxVC Comparisons & Logic
+score = 85
+passed = score >= 50
+say passed
+say score == 85 and passed

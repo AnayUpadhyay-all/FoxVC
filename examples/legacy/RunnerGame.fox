@@ -1,0 +1,26 @@
+# FoxVC 2D Platformer / Endless Runner
+# Powered by the Panda Game Library
+
+load "panda"
+
+space RunnerWorld
+    background "#090D1A"
+
+    entity RunnerHero
+        form rect
+        size 26 by 42
+        fill "#10B981"
+        camera "focus"
+
+    entity MovingPlatform
+        form rect
+        size 140 by 18
+        fill "#334155"
+        stroke "#475569" thickness 2
+        apply MovingPlatform harmonic_oscillator axis "y" amplitude 60 period 3.0
+
+    entity BonusStar
+        form circle
+        diameter 16
+        fill "#FBBF24"
+        around MovingPlatform distance 35 period 1.8

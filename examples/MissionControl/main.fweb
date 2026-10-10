@@ -1,0 +1,109 @@
+# FoxVC Mission Operations Console (main.fweb)
+# Multi-file composition uniting structure, appearance, and reactive logic
+
+use "design.fskin"
+use "app.flogic"
+
+# 1. Main Document Page
+app = element "page"
+set app "title" "FoxVC Mission Operations Console"
+apply app PageTheme
+
+# 2. Operations Header
+hdr = element "header"
+apply hdr HeaderCard
+
+title = element "heading" "Orbital Station Mission Operations"
+set title "color" "#FF7A00"
+set title "size" 28
+add hdr title
+
+alert_banner = element "badge" "System Operating in Autonomous Mode"
+set alert_banner "name" "alert_banner"
+set alert_banner "background" "#27272A"
+set alert_banner "color" "#A1A1AA"
+set alert_banner "padding" 8
+set alert_banner "radius" 6
+add hdr alert_banner
+
+add app hdr
+
+# 3. Responsive Subsystem Deck
+deck = element "container"
+set deck "id" "deck"
+apply deck OperationGrid
+
+# Subsystem 1: Thermal Management
+thermal_card = element "card"
+apply thermal_card SubsystemCard
+apply thermal_card SubsystemCardHover
+
+thermal_title = element "heading2" "Thermal Loop Subsystem"
+set thermal_title "color" "#FFA94D"
+set thermal_title "size" 18
+
+thermal_readout = element "text" "Thermal Index: 32.9 (Nominal)"
+set thermal_readout "name" "thermal_readout"
+apply thermal_readout MetricValue
+
+purge_btn = element "button" "Engage Cryo Purge"
+apply purge_btn ActionButton
+apply purge_btn ActionButtonHover
+bind purge_btn "activate" "thermal_readout" "content" "Thermal Index: 12.4 (Cryo Purge Stable)"
+
+add thermal_card thermal_title
+add thermal_card thermal_readout
+add thermal_card purge_btn
+add deck thermal_card
+
+# Subsystem 2: Power Grid Regulation
+power_card = element "card"
+apply power_card SubsystemCard
+apply power_card SubsystemCardHover
+
+power_title = element "heading2" "Solar & Battery Array"
+set power_title "color" "#FFA94D"
+set power_title "size" 18
+
+power_readout = element "text" "Solar Output: 4200 W"
+set power_readout "name" "power_readout"
+apply power_readout MetricValue
+
+isolate_btn = element "button" "Emergency Array Cutoff"
+apply isolate_btn DangerButton
+bind isolate_btn "activate" "power_readout" "content" "Solar Array: ISOLATED (Battery Reserve)"
+
+add power_card power_title
+add power_card power_readout
+add power_card isolate_btn
+add deck power_card
+
+# Subsystem 3: Command & Officer Authorization
+auth_card = element "card"
+apply auth_card SubsystemCard
+apply auth_card SubsystemCardHover
+
+auth_title = element "heading2" "Officer Authentication"
+set auth_title "color" "#FFA94D"
+set auth_title "size" 18
+
+officer_input = element "input"
+set officer_input "placeholder" "Type officer callsign..."
+apply officer_input TelemetryInput
+apply officer_input TelemetryInputFocus
+
+officer_display = element "text" "Officer on Watch: Unassigned"
+set officer_display "name" "officer_display"
+apply officer_display MetricValue
+
+bind officer_input "input" "officer_display" "content"
+
+add auth_card auth_title
+add auth_card officer_input
+add auth_card officer_display
+add deck auth_card
+
+add app deck
+
+# 4. Mount Application directly into FoxVC Web Runtime
+mount app

@@ -1,0 +1,10 @@
+# Real FoxVC Stress Test
+x = 12.5
+y = 4
+z = (x * 2) + y
+check = z == 29
+
+say "x = " + x
+say "y = " + y
+say "z = " + z
+say "Valid result: " + check

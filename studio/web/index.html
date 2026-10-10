@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FoxVC Studio — Living Rose Portrait</title>
+  <style>
+    :root {
+      --bg: #090308;
+      --panel: #130612;
+      --border: #3b1136;
+      --accent: #f472b6;
+      --gold: #fb7185;
+      --text: #fdf2f8;
+      --text-dim: #9d6896;
+      --btn-grad: linear-gradient(135deg, #f472b6 0%, #fb7185 100%);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    header {
+      height: 48px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      font-weight: 900;
+      font-size: 15px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-run {
+      background: var(--btn-grad);
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(244, 114, 182, 0.35);
+    }
+    .btn-run:active { filter: brightness(1.2); }
+
+    .tab-bar {
+      display: flex;
+      background: #0d040c;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 11px 0;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      user-select: none;
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      border-bottom: 2px solid var(--accent);
+      background: rgba(244, 114, 182, 0.1);
+    }
+
+    .main-body {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .pane {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      inset: 0;
+    }
+
+    .pane.active { display: flex; flex-direction: column; }
+
+    #code-editor {
+      width: 100%;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      border: none;
+      padding: 16px;
+      font-family: "Consolas", monospace;
+      font-size: 14px;
+      outline: none;
+      resize: none;
+      line-height: 1.55;
+    }
+
+    #canvas-wrap {
+      flex: 1;
+      background: #050104;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      touch-action: none;
+    }
+
+    canvas#viewport {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    #render-hud {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(19, 6, 18, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #fbcfe8;
+      pointer-events: none;
+      backdrop-filter: blur(6px);
+      z-index: 10;
+    }
+
+    #glide-prompt {
+      position: absolute;
+      bottom: 22px;
+      background: rgba(19, 6, 18, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 18px;
+      font-size: 12px;
+      color: #fda4af;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    #console {
+      height: 80px;
+      background: #080208;
+      border-top: 1px solid var(--border);
+      color: #f472b6;
+      padding: 8px 14px;
+      font-family: monospace;
+      font-size: 11px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      flex-shrink: 0;
+    }
+
+    footer {
+      height: 24px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      font-size: 11px;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">🦊 FoxVC Studio</div>
+    <button class="btn-run" id="top-run-btn">▶ Run</button>
+  </header>
+
+  <div class="tab-bar">
+    <div class="tab-btn active" id="tab-btn-code">💻 Coding</div>
+    <div class="tab-btn" id="tab-btn-visual">🧩 Visual</div>
+    <div class="tab-btn" id="tab-btn-output">📋 Output</div>
+  </div>
+
+  <div class="main-body">
+    <!-- PANE 1: CODING -->
+    <div class="pane active" id="pane-code">
+      <textarea id="code-editor" spellcheck="false"># ==========================================================
+# FOXVC LIVING ROSE PORTRAIT
+# Server-sampled photo with glide-responsive petal dynamics
+# ==========================================================
+load "ethereal"
+load "math"
+
+palette_rose("#f472b6", "#fb7185", "#fda4af")
+ribbon_curls(12)
+bloom_pulse(0.40)
+
+say "FoxVC Living Rose Engine: Glide finger across the canvas to disperse petals"</textarea>
+    </div>
+
+    <!-- PANE 2: VISUAL MODE -->
+    <div class="pane" id="pane-visual"></div>
+
+    <!-- PANE 3: OUTPUT CANVAS -->
+    <div class="pane" id="pane-output">
+      <div id="canvas-wrap">
+        <canvas id="viewport"></canvas>
+        <div id="render-hud">Sampling portrait from server...</div>
+        <div id="glide-prompt">✨ Glide your finger or mouse over her portrait ✨</div>
+      </div>
+      <div id="console">[Awaiting Output]</div>
+    </div>
+  </div>
+
+  <footer>
+    <span>FoxVC Native Standard</span>
+    <span id="fps-tag">60 FPS Rose Core</span>
+  </footer>
+
+  <script src="/visual_builder.js"></script>
+  <script>
+    const codeEditor = document.getElementById('code-editor');
+    const consoleEl = document.getElementById('console');
+    const canvas = document.getElementById('viewport');
+    const ctx = canvas.getContext('2d');
+    const hud = document.getElementById('render-hud');
+    const fpsTag = document.getElementById('fps-tag');
+    const wrap = document.getElementById('canvas-wrap');
+    const glidePrompt = document.getElementById('glide-prompt');
+
+    const tabCode = document.getElementById('tab-btn-code');
+    const tabVisual = document.getElementById('tab-btn-visual');
+    const tabOutput = document.getElementById('tab-btn-output');
+
+    const paneCode = document.getElementById('pane-code');
+    const paneVisual = document.getElementById('pane-visual');
+    const paneOutput = document.getElementById('pane-output');
+
+    let animFrame = null;
+    let clockStart = performance.now();
+    let frameCount = 0;
+    let lastFps = performance.now();
+
+    // Gliding Interaction Physics
+    let glideX = -9999, glideY = -9999;
+    let glideVX = 0, glideVY = 0;
+    let prevGlideX = -9999, prevGlideY = -9999;
+    let isGliding = false;
+    let glideDecayTimer = null;
+
+    function handleGlide(x, y) {
+      if (prevGlideX !== -9999) {
+        glideVX = (x - prevGlideX) * 0.45;
+        glideVY = (y - prevGlideY) * 0.45;
+      }
+      prevGlideX = glideX;
+      prevGlideY = glideY;
+      glideX = x;
+      glideY = y;
+      isGliding = true;
+
+      glidePrompt.style.opacity = "0.2";
+
+      clearTimeout(glideDecayTimer);
+      glideDecayTimer = setTimeout(() => {
+        isGliding = false;
+        glidePrompt.style.opacity = "1";
+      }, 450);
+    }
+
+    wrap.addEventListener('pointermove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      handleGlide(e.clientX - rect.left, e.clientY - rect.top);
+    });
+
+    wrap.addEventListener('touchmove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const t = e.touches[0];
+      handleGlide(t.clientX - rect.left, t.clientY - rect.top);
+    }, { passive: true });
+
+    wrap.addEventListener('pointerleave', () => {
+      isGliding = false;
+      glideX = -9999; glideY = -9999;
+      prevGlideX = -9999; prevGlideY = -9999;
+    });
+
+    function resizeCanvas() {
+      if (wrap.clientWidth > 0 && wrap.clientHeight > 0) {
+        canvas.width = wrap.clientWidth;
+        canvas.height = wrap.clientHeight;
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function showTab(name) {
+      paneCode.classList.toggle('active', name === 'code');
+      paneVisual.classList.toggle('active', name === 'visual');
+      paneOutput.classList.toggle('active', name === 'output');
+
+      tabCode.classList.toggle('active', name === 'code');
+      tabVisual.classList.toggle('active', name === 'visual');
+      tabOutput.classList.toggle('active', name === 'output');
+
+      if (name === 'output') {
+        setTimeout(() => {
+          resizeCanvas();
+          startRender();
+        }, 30);
+      }
+      if (name === 'visual' && typeof VisualLearningMode !== 'undefined') {
+        if (!window.visualApp) {
+          window.visualApp = new VisualLearningMode(paneVisual, {
+            getCode: () => codeEditor.value,
+            syncToEditor: (c) => { codeEditor.value = c; },
+            onGoCoding: () => showTab('code'),
+            onRunSuccess: () => showTab('output')
+          });
+        }
+        window.visualApp.parseCodeToBlocks(codeEditor.value);
+      }
+    }
+
+    tabCode.addEventListener('click', () => showTab('code'));
+    tabVisual.addEventListener('click', () => showTab('visual'));
+    tabOutput.addEventListener('click', () => showTab('output'));
+
+    // 2,800 Living Rose Petal Particles
+    const NUM_PETALS = 2800;
+    const petals = [];
+    for (let i = 0; i < NUM_PETALS; i++) {
+      petals.push({
+        x: (Math.random() - 0.5) * 600,
+        y: (Math.random() - 0.5) * 600,
+        vx: 0,
+        vy: 0,
+        origX: (Math.random() - 0.5) * 280,
+        origY: (Math.random() - 0.5) * 360,
+        color: "rgba(244, 114, 182, 0.85)",
+        size: 1.1 + Math.random() * 2.2,
+        flutterPhase: Math.random() * Math.PI * 2,
+        curlRate: (Math.random() - 0.5) * 2.0
+      });
+    }
+
+    // SERVER IMAGE SAMPLER: Loads her photo from /assets/portrait.jpg
+    const portrait = new Image();
+    portrait.src = "/assets/portrait.jpg?t=" + Date.now();
+    portrait.onload = () => {
+      const off = document.createElement('canvas');
+      const offCtx = off.getContext('2d');
+      const tw = 320;
+      const th = Math.round((portrait.height / portrait.width) * tw);
+      off.width = tw;
+      off.height = th;
+      offCtx.drawImage(portrait, 0, 0, tw, th);
+      const data = offCtx.getImageData(0, 0, tw, th).data;
+      const validPoints = [];
+
+      for (let y = 0; y < th; y += 4) {
+        for (let x = 0; x < tw; x += 4) {
+          const idx = (y * tw + x) * 4;
+          const r = data[idx], g = data[idx+1], b = data[idx+2];
+          const bri = (r*0.299 + g*0.587 + b*0.114) / 255;
+          if (bri > 0.12 && bri < 0.94) {
+            validPoints.push({
+              x: (x - tw/2) * 1.6,
+              y: (y - th/2) * 1.6,
+              color: `rgba(${Math.min(255, r + 45)}, ${Math.max(100, g + 20)}, ${Math.max(135, b + 50)}, 0.85)`
+            });
+          }
+        }
+      }
+
+      if (validPoints.length > 0) {
+        for (let i = 0; i < NUM_PETALS; i++) {
+          const pt = validPoints[Math.floor(Math.random() * validPoints.length)];
+          petals[i].origX = pt.x;
+          petals[i].origY = pt.y;
+          petals[i].color = pt.color;
+        }
+        hud.innerText = `Portrait Active: ${NUM_PETALS} Living Rose Photons`;
+      }
+    };
+
+    portrait.onerror = () => {
+      hud.innerText = `Assets ready | Defaulting to procedural rose silhouette`;
+    };
+
+    function render(now) {
+      frameCount++;
+      if (now - lastFps >= 1000) {
+        fpsTag.innerText = `${frameCount} FPS | Rose Flow`;
+        frameCount = 0;
+        lastFps = now;
+      }
+
+      const t = (now - clockStart) / 1000.0;
+      const w = canvas.width || 800;
+      const h = canvas.height || 800;
+      const cx = w / 2;
+      const cy = h / 2;
+      const scale = Math.min(w, h) / 880;
+
+      // Soft Velvet Trailing Fade
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(7, 2, 7, 0.18)";
+      ctx.fillRect(0, 0, w, h);
+
+      // Additive Luminous Glow
+      ctx.globalCompositeOperation = "lighter";
+
+      const breath = 1.0 + 0.04 * Math.sin(t * 1.7);
+
+      // 1. BACKGROUND SILK RIBBON CURLS
+      const numRibbons = 10;
+      for (let r = 0; r < numRibbons; r++) {
+        const baseAng = (r * Math.PI * 2) / numRibbons + t * 0.12;
+        ctx.beginPath();
+        for (let j = 0; j < 120; j++) {
+          const u = j / 120;
+          const rad = u * 360 * scale * breath;
+          const ang = baseAng + Math.pow(u, 1.4) * 3.6 * Math.sin(t * 0.6 + r);
+          const px = cx + rad * Math.cos(ang);
+          const py = cy + rad * Math.sin(ang);
+          if (j === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.strokeStyle = `hsla(${335 + r * 5}, 90%, 72%, 0.14)`;
+        ctx.lineWidth = 1.5 * scale;
+        ctx.stroke();
+      }
+
+      // 2. PETALS WITH DYNAMIC GLIDE DISPERSION
+      for (let i = 0; i < NUM_PETALS; i++) {
+        const p = petals[i];
+
+        // Rest coordinate (subtle resting flutter)
+        const flutter = Math.sin(t * 1.5 + p.flutterPhase) * 3.5;
+        const targetX = cx + (p.origX * scale + flutter) * breath;
+        const targetY = cy + (p.origY * scale + flutter) * breath;
+
+        // Gliding Physics: ONLY when a finger/mouse glides do petals scatter
+        if (isGliding) {
+          const dx = p.x - glideX;
+          const dy = p.y - glideY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const interactRadius = 160 * scale;
+
+          if (dist < interactRadius && dist > 0.001) {
+            const force = (interactRadius - dist) / interactRadius;
+            const vortexAngle = Math.atan2(dy, dx) + p.curlRate + (t * 2.0);
+
+            p.vx += Math.cos(vortexAngle) * force * 16.0 + glideVX * 0.35;
+            p.vy += Math.sin(vortexAngle) * force * 16.0 + glideVY * 0.35;
+          }
+        }
+
+        // Spring acceleration back to portrait anchor point
+        const springX = (targetX - p.x) * 0.08;
+        const springY = (targetY - p.y) * 0.08;
+        p.vx = (p.vx + springX) * 0.88;
+        p.vy = (p.vy + springY) * 0.88;
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      animFrame = requestAnimationFrame(render);
+    }
+
+    function startRender() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(render);
+    }
+
+    async function execute() {
+      showTab('output');
+      consoleEl.innerText = "Compiling FoxVC Living Rose Engine...";
+      try {
+        const res = await fetch('/api/compile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: codeEditor.value })
+        });
+        const data = await res.json();
+        if (data.success) {
+          consoleEl.innerText = (data.output || []).join('\n') || "[Compiled Cleanly]";
+          startRender();
+        } else {
+          consoleEl.innerHTML = `<span style="color:#ef4444;">${data.error}</span>`;
+        }
+      } catch (err) {
+        consoleEl.innerHTML = `<span style="color:#ef4444;">Error: ${err.message}</span>`;
+      }
+    }
+
+    document.getElementById('top-run-btn').addEventListener('click', execute);
+    setTimeout(() => { resizeCanvas(); execute(); }, 200);
+  </script>
+</body>
+</html>

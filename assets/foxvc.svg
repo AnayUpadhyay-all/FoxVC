@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="55%" r="65%">
+      <stop offset="0%" stop-color="#342820"/>
+      <stop offset="100%" stop-color="#12100E"/>
+    </radialGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- Modern Dark Squircle Card -->
+  <rect x="8" y="8" width="240" height="240" rx="58" fill="url(#bgGlow)" stroke="#382C24" stroke-width="1.5"/>
+
+  <!-- Fox Group -->
+  <g filter="url(#subtleShadow)">
+    <!-- Left Outer/Inner Ear -->
+    <polygon points="56,40 115,123 61,123" fill="#D94800"/>
+    <polygon points="66,56 102,112 72,112" fill="#FFAA6E"/>
+
+    <!-- Right Outer/Inner Ear -->
+    <polygon points="200,40 195,123 141,123" fill="#D94800"/>
+    <polygon points="190,56 184,112 154,112" fill="#FFAA6E"/>
+
+    <!-- Main Fox Face Plate -->
+    <polygon points="51,118 128,225 205,118 128,97" fill="#FF7800"/>
+
+    <!-- Crown Diamond -->
+    <polygon points="128,97 100,128 128,158 156,128" fill="#EB5800"/>
+
+    <!-- Brow Accent -->
+    <polygon points="128,122 112,166 128,194 144,166" fill="#FF911E"/>
+
+    <!-- Left Cheek Fluff (Warm Ivory) -->
+    <polygon points="51,118 128,225 92,148" fill="#F8F4EE"/>
+    <polygon points="51,118 92,148 79,123" fill="#EBE4DC"/>
+
+    <!-- Right Cheek Fluff (Warm Ivory) -->
+    <polygon points="205,118 164,148 128,225" fill="#F8F4EE"/>
+    <polygon points="205,118 177,123 164,148" fill="#EBE4DC"/>
+
+    <!-- Minimalist Geometric Eyes -->
+    <polygon points="92,140 110,148 95,156" fill="#161210"/>
+    <polygon points="164,140 161,156 146,148" fill="#161210"/>
+
+    <!-- Nose Diamond -->
+    <polygon points="128,215 118,225 128,233 138,225" fill="#120F0D"/>
+  </g>
+</svg>

@@ -1,0 +1,89 @@
+# FoxVC v0.3.3 Interactive Dashboard Application
+# Demonstrates live Web Model, reactive event bindings, layout, and mathematics.
+
+# 1. Root Document
+page = element "page"
+set page "title" "FoxVC Live Analytics Dashboard"
+set page "background" "#100E0D"
+set page "color" "#F0EBE1"
+set page "padding" 24
+
+# 2. Header
+header = element "header"
+set header "align" "center"
+set header "margin" 10
+
+title = element "heading" "Telemetry & Control Dashboard"
+set title "color" "#FF7A00"
+set title "size" 28
+
+add header title
+add page header
+
+# 3. Main Flex Container
+main_layout = element "container"
+set main_layout "direction" "row"
+set main_layout "gap" 20
+set main_layout "margin" 10
+
+# 4. Metric Card 1: Power Management
+card_power = element "card"
+set card_power "background" "#1A1715"
+set card_power "border" "1px solid #2B2622"
+set card_power "radius" 8
+set card_power "padding" 16
+set card_power "width" 320
+
+power_head = element "heading2" "Power Grid"
+set power_head "color" "#FFA94D"
+set power_head "size" 18
+
+volts = 240
+amps = 15
+watts = volts * amps
+power_val = element "text" "Load: " + watts + " W"
+set power_val "color" "#86EFAC"
+
+power_btn = element "button" "Switch Grid Mode"
+set power_btn "background" "#E65C00"
+set power_btn "margin" 8
+
+# Bind interaction to toggle load indicator
+bind power_btn "activate" power_val "content" "Load: 4200 W (Peak)"
+
+add card_power power_head
+add card_power power_val
+add card_power power_btn
+add main_layout card_power
+
+# 5. Metric Card 2: Interactive Mission Tag
+card_tag = element "card"
+set card_tag "background" "#1A1715"
+set card_tag "border" "1px solid #2B2622"
+set card_tag "radius" 8
+set card_tag "padding" 16
+set card_tag "width" 320
+
+tag_head = element "heading2" "Operator Log"
+set tag_head "color" "#FFA94D"
+set tag_head "size" 18
+
+tag_input = element "input"
+set tag_input "placeholder" "Enter operator callsign..."
+set tag_input "margin" 8
+
+tag_display = element "text" "Active: Commander"
+set tag_display "color" "#70D6FF"
+
+# Bind live input event directly to tag display
+bind tag_input "input" tag_display "content"
+
+add card_tag tag_head
+add card_tag tag_input
+add card_tag tag_display
+add main_layout card_tag
+
+add page main_layout
+
+# 6. Render the Interactive Web Document
+render page

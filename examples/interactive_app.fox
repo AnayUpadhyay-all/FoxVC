@@ -1,0 +1,6 @@
+state reactor_temp = 320
+state status_message = "Normal"
+action scram reactor_temp set 100
+app = element "div"
+mount app
+say "Reactor telemetry active"

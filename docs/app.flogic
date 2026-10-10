@@ -1,0 +1,11 @@
+# FoxVC Documentation Reactive Logic (v0.3.7)
+
+bind hero_button "activate" fox_core "show"
+
+bind nav_intro "activate" hero "show"
+bind nav_fox "activate" fox_core "show"
+bind nav_fweb "activate" compare "show"
+bind nav_fskin "activate" compare "show"
+bind nav_flogic "activate" compare "show"
+bind nav_runtime "activate" architecture "show"
+bind nav_about "activate" about "show"

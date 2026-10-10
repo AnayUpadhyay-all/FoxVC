@@ -1,0 +1,27 @@
+load "spatial.expansion"
+load "sensor.optics" as opt
+space PlanetaryMission
+    entity Chassis
+        form rect size 100 by 50
+    entity WheelFL
+        form circle diameter 25
+        beside Chassis direction west spacing 10
+    entity WheelFR
+        form circle diameter 25
+        beside Chassis direction east spacing 10
+    entity WheelRL
+        form circle diameter 25
+        beside Chassis direction south spacing 10
+    entity WheelRR
+        form circle diameter 25
+        beside Chassis direction north spacing 10
+    entity Mast
+        form rect size 10 by 30
+        inside Chassis
+        apply Mast opt.beam_pulse period 2.0
+    connect FrontAxle from WheelFL to WheelFR
+        stroke "#333333"
+        thickness 4.0
+    connect RearAxle from WheelRL to WheelRR
+        stroke "#333333"
+        thickness 4.0

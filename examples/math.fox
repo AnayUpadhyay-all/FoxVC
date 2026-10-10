@@ -1,0 +1,9 @@
+# FoxVC Arithmetic
+a = 10
+b = 5
+sum = a + b
+product = a * b
+division = a / b
+say sum
+say product
+say division

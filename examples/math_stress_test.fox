@@ -1,0 +1,58 @@
+# FoxVC v0.3.1 — Mathematical Stress Test & Scientific Formula Demonstration
+# Tests extreme numbers, long dependency chains, nested logic, and geometry.
+
+say "--- 1. Extreme Scale Numbers ---"
+large = 1000000000000
+small = 0.000000001
+scaled = large * small
+say "Large * Small = " + scaled
+
+say "--- 2. Floating-Point Drift Normalization ---"
+a = 0.1
+b = 0.2
+drift_sum = a + b
+say "0.1 + 0.2 = " + drift_sum
+
+say "--- 3. Reassignment Accumulator Chain ---"
+acc = 100
+acc = acc + 50
+acc = acc * 2
+acc = acc / 3
+acc = acc - 20
+say "Final Accumulator = " + acc
+
+say "--- 4. Long Dependency Pipeline (10 Steps) ---"
+s1 = 5
+s2 = s1 * 4
+s3 = s2 + 10
+s4 = s3 / 2
+s5 = s4 * 7
+s6 = s5 - 3
+s7 = s6 * 2
+s8 = s7 / 5
+s9 = s8 + s5
+s10 = s9 * 3
+say "Dependency Step 10 = " + s10
+
+say "--- 5. Nested Parenthetical Arithmetic ---"
+complex_math = (((10 + 5) * (20 - 4)) / ((4 + 2) * 2)) + (100 / (5 * 4))
+say "Complex Math Result = " + complex_math
+
+say "--- 6. Expression Comparisons & Boolean Logic ---"
+val1 = 50
+val2 = 25
+val3 = 10
+comp_result = ((val1 / val2) == 2) and (val1 > (val2 + val3))
+say "Comparison in Logic = " + comp_result
+
+say "--- 7. Statistics: Mean and Spread ---"
+x1 = 12
+x2 = 18
+x3 = 24
+x4 = 30
+sum_x = x1 + x2 + x3 + x4
+mean_x = sum_x / 4
+diff1 = x1 - mean_x
+diff4 = x4 - mean_x
+say "Mean = " + mean_x
+say "Spread check: " + (diff4 == -diff1)

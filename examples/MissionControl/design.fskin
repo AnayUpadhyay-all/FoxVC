@@ -1,0 +1,65 @@
+# FoxVC Visual Styling Rules (design.fskin)
+# Cascading appearance, responsive rules, transitions, and pseudo-states
+
+skin PageTheme "page"
+set PageTheme "background" "#090807"
+set PageTheme "color" "#F3EFEA"
+set PageTheme "padding" 24
+
+skin HeaderCard "header"
+set HeaderCard "align" "center"
+set HeaderCard "margin" 16
+
+skin OperationGrid "container" as "deck"
+set OperationGrid "columns" "repeat(auto-fit, minmax(320px, 1fr))"
+set OperationGrid "gap" 24
+
+skin SubsystemCard "card"
+set SubsystemCard "background" "#161412"
+set SubsystemCard "border" "1px solid #2B2520"
+set SubsystemCard "radius" 12
+set SubsystemCard "padding" 20
+set SubsystemCard "shadow" "0 8px 24px rgba(0,0,0,0.5)"
+set SubsystemCard "transition" "transform 0.2s ease"
+
+skin SubsystemCardHover "card" when "hover"
+set SubsystemCardHover "transform" "translateY(-4px)"
+set SubsystemCardHover "border" "1px solid #FF7A00"
+
+skin ActionButton "button"
+set ActionButton "background" "#E65C00"
+set ActionButton "color" "#FFFFFF"
+set ActionButton "radius" 8
+set ActionButton "padding" 12
+set ActionButton "weight" "bold"
+set ActionButton "transition" "background 0.15s ease"
+
+skin ActionButtonHover "button" when "hover"
+set ActionButtonHover "background" "#FF7A00"
+
+skin DangerButton "button"
+set DangerButton "background" "#B91C1C"
+set DangerButton "color" "#FFFFFF"
+set DangerButton "radius" 8
+set DangerButton "padding" 12
+set DangerButton "weight" "bold"
+
+skin MetricValue "text"
+set MetricValue "color" "#86EFAC"
+set MetricValue "size" 16
+set MetricValue "weight" "bold"
+
+skin TelemetryInput "input"
+set TelemetryInput "background" "#211D1A"
+set TelemetryInput "color" "#FFFFFF"
+set TelemetryInput "border" "1px solid #3D352E"
+set TelemetryInput "radius" 8
+set TelemetryInput "padding" 12
+
+skin TelemetryInputFocus "input" when "focus"
+set TelemetryInputFocus "border" "1px solid #FF7A00"
+
+# Responsive rules for mobile displays
+skin MobileDeck "container" as "deck" at "mobile"
+set MobileDeck "columns" "1fr"
+set MobileDeck "gap" 16

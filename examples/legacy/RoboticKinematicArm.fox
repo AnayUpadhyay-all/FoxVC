@@ -1,0 +1,55 @@
+# FoxVC Semantic Module Extension Workload (v0.8.0)
+# Articulated Robotic Arm powered by the 'motion.kinematics' and 'visual.fx' modules
+
+load "motion.kinematics" as kin
+load "visual.fx" as fx
+
+space RoboticAssemblyCell
+    background "#07090E"
+
+    # 1. Structural Fixed Base & Pedestal
+    entity HeavyMountBase
+        form rect
+        size 180 by 50
+        fill "#1E293B"
+        stroke "#334155" thickness 3
+        anchor upper_turret at north
+
+    # 2. Rotating Turret Arm (Driven by linear patrol capability)
+    entity TurretGantry
+        form rect
+        size 70 by 30
+        fill "#334155"
+        stroke "#475569" thickness 2
+        anchored_to HeavyMountBase.upper_turret at south offset 0, -5
+        apply TurretGantry kin.linear_patrol span 80.0 period 6.0 axis "x"
+        anchor arm_mount at north
+
+    # 3. Primary Articulated Extension Arm
+    entity PrimaryLiftingArm
+        form rect
+        size 24 by 120
+        fill "#0284C7"
+        stroke "#38BDF8" thickness 2
+        anchored_to TurretGantry.arm_mount at south offset 0, -10
+        apply PrimaryLiftingArm kin.harmonic_oscillator amplitude 25.0 period 4.0 axis "y"
+        anchor wrist_joint at north
+
+    # 4. Precision Laser Effector & Optical Sensor
+    entity LaserToolHead
+        form circle
+        diameter 36
+        fill "#F59E0B"
+        stroke "#D97706" thickness 2
+        glow 25
+        anchored_to PrimaryLiftingArm.wrist_joint at south offset 0, -6
+        apply LaserToolHead kin.orbital_wobble period 2.0 inclination 12.0
+        apply LaserToolHead fx.opacity_wave period 1.5 min 0.4 max 1.0
+        anchor nozzle at north
+
+    # 5. Dual Hydraulic Stabilization Struts (Dynamic Anchor-to-Anchor Tracking)
+    connect HydraulicActuatorLeft from HeavyMountBase.upper_turret to TurretGantry.arm_mount
+        stroke "#64748B" thickness 3
+
+    connect HydraulicActuatorRight from TurretGantry.arm_mount to PrimaryLiftingArm.wrist_joint
+        stroke "#0284C7" thickness 2

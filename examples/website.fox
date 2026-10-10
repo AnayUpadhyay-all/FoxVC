@@ -1,0 +1,81 @@
+# FoxVC v0.3.2 Web Model Example
+# Builds a complete project landing page using pure general-purpose FoxVC concepts.
+# Zero HTML tags, zero CSS syntax, zero commas, zero semicolons.
+
+# 1. Page Root Document
+page = element "page"
+set page "title" "FoxVC Programming Language"
+set page "background" "#0F0E0D"
+set page "color" "#F5EFE6"
+set page "padding" 30
+
+# 2. Main Hero Section
+hero = element "section"
+set hero "align" "center"
+set hero "padding" 40
+
+title = element "heading" "FoxVC Programming Language"
+set title "color" "#FF7A00"
+set title "size" 36
+
+tagline = element "text" "A punctuation-minimal programming language designed for mathematics, science, and the web."
+set tagline "color" "#A89F91"
+set tagline "size" 18
+
+add hero title
+add hero tagline
+add page hero
+
+# 3. Features Card Container
+card = element "section"
+set card "background" "#1A1715"
+set card "border" "1px solid #2E2824"
+set card "radius" 12
+set card "padding" 24
+set card "margin" 20
+
+card_heading = element "heading2" "Core Architecture"
+set card_heading "color" "#FFA94D"
+
+feature1 = element "text" "• Punctuation-Minimal: Zero commas, semicolons, or apostrophes."
+feature2 = element "text" "• Strict Determinism: Numbers, booleans, and text are isolated."
+feature3 = element "text" "• Web Model: Native structured document representation."
+
+add card card_heading
+add card feature1
+add card feature2
+add card feature3
+add page card
+
+# 4. Interactive Action Section (Link and Button)
+actions = element "section"
+set actions "align" "center"
+set actions "padding" 20
+
+docs_link = element "link" "Explore Documentation"
+set docs_link "url" "https://github.com/anay/foxvc"
+set docs_link "color" "#FF7A00"
+set docs_link "size" 16
+
+launch_btn = element "button" "Run in Fox Den Studio"
+set launch_btn "background" "#E65C00"
+set launch_btn "color" "#FFFFFF"
+set launch_btn "radius" 6
+set launch_btn "padding" 12
+
+add actions docs_link
+add actions launch_btn
+add page actions
+
+# 5. Footer
+footer = element "footer"
+set footer "align" "center"
+set footer "padding" 20
+set footer "color" "#7A7067"
+
+footer_note = element "text" "Crafted with the FoxVC v0.3.2 Web Engine."
+add footer footer_note
+add page footer
+
+# 6. Render the Complete Web Document
+render page

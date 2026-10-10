@@ -1,0 +1,109 @@
+# FoxVC Living World Engine Workload (v0.7.0)
+# Autonomous 2D Environment: Terrain, Transit Network, Architecture, State Cycles, and Camera Tracking
+
+world MetroLivingWorld
+    background "#080C14"
+    day_cycle 40
+
+    # 1. Natural Terrain & River Basin
+    entity LandscapeGround
+        form rect
+        size 1100 by 500
+        fill "#0C120C"
+        stroke "#141F14" thickness 2
+
+    entity WindingRiver
+        form path waypoints [-520, -140, -220, -80, 40, -160, 260, -90, 520, -130]
+        stroke "#0284C7" thickness 32
+        opacity 0.75
+
+    # 2. Main Transit Highway
+    entity MainAvenue
+        form path waypoints [-500, 100, -180, 100, 80, 40, 320, 40, 500, 90]
+        stroke "#1E293B" thickness 44
+
+    entity HighwayDivider
+        form path waypoints [-500, 100, -180, 100, 80, 40, 320, 40, 500, 90]
+        stroke "#F59E0B" thickness 2
+
+    # 3. Urban Architecture & Interior Containment
+    entity CivicLibrary
+        form rect
+        size 190 by 130
+        fill "#1E293B"
+        stroke "#334155" thickness 3
+        inside LandscapeGround at center offset -240, -60
+        anchor main_entrance at south
+        anchor roof_hub at north
+
+    entity ReadingHall
+        form rect
+        size 150 by 90
+        fill "#0F172A"
+        stroke "#1E293B" thickness 1
+        inside CivicLibrary at center
+
+    entity ReadingTable
+        form rect
+        size 60 by 30
+        fill "#334155"
+        inside ReadingHall at center
+
+    entity EntrancePillar
+        form rect
+        size 12 by 45
+        anchored_to CivicLibrary.main_entrance at north offset -45, 0
+        fill "#475569"
+
+    # 4. Traffic Control Intersection with Observable State Machine
+    entity IntersectionLight
+        form circle
+        diameter 26
+        fill "#EF4444"
+        stroke "#0F172A" thickness 3
+        glow 25
+        cycle 12.0
+        inside LandscapeGround at center offset 80, 0
+
+        state red fill "#EF4444" glow 25
+        state yellow fill "#F59E0B" glow 20
+        state green fill "#10B981" glow 30
+
+    # 5. Autonomous Vehicles Navigating Highway
+    entity AutonomousTransitCar
+        form polygon [0, -12, 22, 0, 0, 12, -22, 0]
+        fill "#38BDF8"
+        stroke "#0284C7" thickness 2
+        glow 15
+        travels along MainAvenue period 14.0 phase 0.0
+
+    entity CargoFreighter
+        form rect
+        size 50 by 22
+        fill "#E11D48"
+        stroke "#9F1239" thickness 2
+        travels along MainAvenue period 22.0 phase 8.0
+
+    # 6. Residential Park & Pedestrian Population
+    entity CentralPark
+        form circle
+        diameter 170
+        fill "#064E3B"
+        stroke "#047857" thickness 2
+        inside LandscapeGround at center offset 260, -90
+
+    replicate 12 of entity ParkTree
+        form circle
+        diameter 22
+        fill "#059669"
+        stroke "#047857" thickness 1
+        around CentralPark distance 65 distributed radial phase 15
+
+    entity PedestrianRunner
+        form circle
+        diameter 12
+        fill "#FBBF24"
+        around CentralPark distance 78 period 8.0
+
+    # 7. Semantic Tracking Camera
+    camera follows AutonomousTransitCar

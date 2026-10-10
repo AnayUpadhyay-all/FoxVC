@@ -1,0 +1,3 @@
+# FoxVC User Input Example
+name = ask "What is your name? "
+say "Welcome to FoxVC, " + name + "!"

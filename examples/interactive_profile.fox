@@ -1,0 +1,22 @@
+# FoxVC Interactive Profile Verification
+# Combines: ask, variables, arithmetic, comparisons, boolean logic, output
+
+username = ask "Choose your pilot username: "
+security_pin = ask "Enter your 4-digit callsign: "
+
+# Pin length verification (string comparison)
+is_admin_callsign = security_pin == "9900"
+is_valid_user = username != ""
+
+# Calculate flight rating
+base_score = 100
+bonus = 25
+total_score = base_score + bonus
+has_max_rating = (total_score >= 120) and is_valid_user
+
+say "=== PILOT ACCESS PROFILE ==="
+say "Pilot ID: " + username
+say "Callsign: " + security_pin
+say "Admin Authorization: " + is_admin_callsign
+say "Flight Score: " + total_score
+say "Flight Certified: " + has_max_rating

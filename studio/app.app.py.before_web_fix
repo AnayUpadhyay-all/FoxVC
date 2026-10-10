@@ -1,0 +1,864 @@
+"""
+FoxVC Desktop Studio (v0.3.6 — "The Fox Den")
+VS Code-Style Multi-File Editor with Project Tree Sidebar, Tab Bar,
+and Native Web Runtime Integration.
+Zero external dependencies (pure Python / Tkinter).
+"""
+
+import os
+import sys
+import threading
+import queue
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from engine.runner import run_foxvc, run_foxvc_diagnostic, detect_source_format
+from engine.runtime import FOXVC_LANGUAGE_VERSION, FOXVC_RUNTIME_VERSION, StatementStatus
+from engine.web import FoxWebRuntime
+
+FOXVC_STUDIO_VERSION = "0.3.6"
+
+class LineNumbers(tk.Canvas):
+    def __init__(self, parent, text_widget, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.text_widget = text_widget
+        self.configure(width=38, bg="#181615", highlightthickness=0, bd=0)
+
+    def redraw(self):
+        self.delete("all")
+        if not self.text_widget:
+            return
+        i = self.text_widget.index("@0,0")
+        while True:
+            dline = self.text_widget.dlineinfo(i)
+            if dline is None:
+                break
+            y = dline[1]
+            line_num = str(i).split(".")[0].zfill(2)
+            self.create_text(
+                30, y + 3,
+                anchor="ne",
+                text=line_num,
+                fill="#6B6259",
+                font=("Monospace", 9)
+            )
+            i = self.text_widget.index(f"{i}+1line")
+
+class DocumentTab:
+    """Encapsulates a single open document buffer."""
+    def __init__(self, filepath=None, title="untitled.fox", content=""):
+        self.filepath = filepath
+        self.title = title
+        self.is_modified = False
+        self.content = content
+
+class FoxVCStudio:
+    def __init__(self, root: tk.Tk, initial_file: str = None):
+        self.root = root
+        self.documents = []
+        self.active_doc_idx = -1
+        self.project_dir = None
+        self.is_result_expanded = False
+        self.is_running = False
+        self.is_waiting_for_input = False
+        self.input_queue = queue.Queue()
+
+        self._init_window()
+        self._setup_theme()
+        self._build_header()
+        self._build_workspace()
+        self._build_context_menus()
+        self._bind_events()
+
+        if initial_file and os.path.exists(initial_file):
+            if os.path.isdir(initial_file):
+                self.open_folder_path(os.path.abspath(initial_file))
+            else:
+                self.open_file_path(os.path.abspath(initial_file))
+        else:
+            self.new_file()
+
+    def _init_window(self):
+        self.root.title(f"FoxVC Studio (v{FOXVC_STUDIO_VERSION})")
+        self.root.geometry("980x780")
+        self.root.minsize(740, 560)
+        self.root.configure(bg="#121110")
+
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "foxvc.png")
+        if os.path.isfile(icon_path):
+            try:
+                img = tk.PhotoImage(file=icon_path)
+                self.root.iconphoto(True, img)
+            except Exception:
+                pass
+
+    def _setup_theme(self):
+        self.c_bg = "#121110"
+        self.c_sidebar = "#171513"
+        self.c_card = "#1B1917"
+        self.c_card_border = "#2B2622"
+        self.c_editor_bg = "#1F1D1A"
+        self.c_editor_fg = "#F2EBE4"
+        self.c_orange_main = "#E65C00"
+        self.c_orange_bright = "#FF7A00"
+        self.c_amber_glow = "#FFA94D"
+        self.c_text_muted = "#80756B"
+
+        style = ttk.Style()
+        style.theme_use("default")
+        style.configure("Treeview",
+            background=self.c_sidebar,
+            foreground="#D1C7BD",
+            fieldbackground=self.c_sidebar,
+            borderwidth=0,
+            font=("DejaVu Sans", 9)
+        )
+        style.map("Treeview",
+            background=[("selected", "#3D2B1D")],
+            foreground=[("selected", "#FFFFFF")]
+        )
+
+    def _build_header(self):
+        self.header = tk.Frame(self.root, bg=self.c_bg, height=48)
+        self.header.pack(fill=tk.X, side=tk.TOP, padx=16, pady=(10, 4))
+
+        brand_box = tk.Frame(self.header, bg=self.c_bg)
+        brand_box.pack(side=tk.LEFT)
+
+        logo = tk.Label(
+            brand_box,
+            text="🦊 FOXVC",
+            bg=self.c_bg,
+            fg=self.c_orange_bright,
+            font=("DejaVu Sans", 11, "bold")
+        )
+        logo.pack(side=tk.LEFT)
+
+        self.doc_tag = tk.Label(
+            brand_box,
+            text="• Ready",
+            bg="#211E1B",
+            fg="#B0A69D",
+            font=("DejaVu Sans", 8, "bold"),
+            padx=8,
+            pady=2
+        )
+        self.doc_tag.pack(side=tk.LEFT, padx=12)
+
+        actions_box = tk.Frame(self.header, bg=self.c_bg)
+        actions_box.pack(side=tk.RIGHT)
+
+        def make_action_btn(text, cmd):
+            return tk.Button(
+                actions_box,
+                text=text,
+                command=cmd,
+                bg="#1E1C1A",
+                fg="#CFC5BC",
+                activebackground="#2E2A26",
+                activeforeground="#FFFFFF",
+                bd=0,
+                padx=10,
+                pady=3,
+                font=("DejaVu Sans", 8, "bold"),
+                cursor="hand2"
+            )
+
+        make_action_btn("New", self.new_file).pack(side=tk.LEFT, padx=2)
+        make_action_btn("Open File", self.open_file_dialog).pack(side=tk.LEFT, padx=2)
+        make_action_btn("Open Folder", self.open_folder_dialog).pack(side=tk.LEFT, padx=2)
+        make_action_btn("Save", self.save_file).pack(side=tk.LEFT, padx=2)
+
+    def _build_workspace(self):
+        self.workspace = tk.Frame(self.root, bg=self.c_bg)
+        self.workspace.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 10))
+
+        # Horizontal paned window: Left = Sidebar Explorer, Right = Editor + Results
+        self.paned = tk.PanedWindow(self.workspace, orient=tk.HORIZONTAL, bg=self.c_card_border, bd=0, sashwidth=4)
+        self.paned.pack(fill=tk.BOTH, expand=True)
+
+        # 1. Left Sidebar (Explorer)
+        self.sidebar_frame = tk.Frame(self.paned, bg=self.c_sidebar, width=220)
+        self.sidebar_frame.pack_propagate(False)
+
+        side_header = tk.Frame(self.sidebar_frame, bg="#131211", height=28)
+        side_header.pack(fill=tk.X, side=tk.TOP)
+
+        self.side_title = tk.Label(
+            side_header,
+            text="EXPLORER",
+            bg="#131211",
+            fg=self.c_text_muted,
+            font=("DejaVu Sans", 8, "bold"),
+            padx=8,
+            pady=4
+        )
+        self.side_title.pack(side=tk.LEFT)
+
+        # Treeview for Project/Folder Files
+        tree_scroll = tk.Scrollbar(self.sidebar_frame, orient=tk.VERTICAL, bg=self.c_sidebar)
+        tree_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.file_tree = ttk.Treeview(self.sidebar_frame, show="tree", yscrollcommand=tree_scroll.set, selectmode="browse")
+        tree_scroll.config(command=self.file_tree.yview)
+        self.file_tree.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        self.file_tree.bind("<Double-1>", self._on_tree_item_clicked)
+        self.file_tree.bind("<Return>", self._on_tree_item_clicked)
+
+        self.paned.add(self.sidebar_frame, minsize=140)
+
+        # 2. Main Content Frame (Tabs, Editor, Bridge, Result Space)
+        self.main_content = tk.Frame(self.paned, bg=self.c_bg)
+        self.paned.add(self.main_content, minsize=400)
+
+        # Tabs Header Bar
+        self.tab_bar_frame = tk.Frame(self.main_content, bg="#151413", height=32)
+        self.tab_bar_frame.pack(fill=tk.X, side=tk.TOP)
+        self.tab_bar_frame.pack_propagate(False)
+
+        # Editor Area Card
+        self.editor_card = tk.Frame(self.main_content, bg=self.c_card, bd=1, highlightthickness=1, highlightbackground=self.c_card_border)
+        self.editor_card.pack(fill=tk.BOTH, expand=True)
+
+        editor_body = tk.Frame(self.editor_card, bg=self.c_editor_bg)
+        editor_body.pack(fill=tk.BOTH, expand=True, padx=1, pady=1)
+
+        self.lines = LineNumbers(editor_body, None)
+        self.lines.pack(side=tk.LEFT, fill=tk.Y)
+
+        self.editor = tk.Text(
+            editor_body,
+            wrap=tk.NONE,
+            bg=self.c_editor_bg,
+            fg=self.c_editor_fg,
+            insertbackground=self.c_orange_bright,
+            selectbackground="#4D3622",
+            selectforeground="#FFFFFF",
+            font=("Monospace", 11),
+            relief=tk.FLAT,
+            bd=0,
+            undo=True,
+            padx=10,
+            pady=8
+        )
+        self.lines.text_widget = self.editor
+
+        scroll_y = tk.Scrollbar(editor_body, orient=tk.VERTICAL, command=self._on_scroll_y, bg="#1E1C1A")
+        scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+        self.editor.configure(yscrollcommand=scroll_y.set)
+        self.editor.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        self.editor.tag_configure("keyword", foreground=self.c_orange_bright, font=("Monospace", 11, "bold"))
+        self.editor.tag_configure("string", foreground="#98C379")
+
+        # Action Bridge
+        self.action_bridge = tk.Frame(self.main_content, bg=self.c_bg, height=48)
+        self.action_bridge.pack(fill=tk.X, pady=(6, 6))
+
+        self.btn_run = tk.Button(
+            self.action_bridge,
+            text="🦊  RUN (F5)",
+            command=self.run_code,
+            bg=self.c_orange_main,
+            fg="#FFFFFF",
+            activebackground=self.c_orange_bright,
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=16,
+            pady=6,
+            font=("DejaVu Sans", 9, "bold"),
+            cursor="hand2"
+        )
+        self.btn_run.pack(side=tk.RIGHT, padx=(4, 0))
+
+        self.btn_diag = tk.Button(
+            self.action_bridge,
+            text="🔍  DIAGNOSE (F6)",
+            command=self.run_diagnostics,
+            bg="#2E2824",
+            fg="#E0D6CC",
+            activebackground="#423932",
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=14,
+            pady=6,
+            font=("DejaVu Sans", 9, "bold"),
+            cursor="hand2"
+        )
+        self.btn_diag.pack(side=tk.RIGHT, padx=4)
+
+        self.btn_preview = tk.Button(
+            self.action_bridge,
+            text="🌐  LAUNCH APP (F7)",
+            command=self.launch_web_app,
+            bg="#1E1C1A",
+            fg="#86EFAC",
+            activebackground="#26221E",
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=12,
+            pady=6,
+            font=("DejaVu Sans", 9, "bold"),
+            cursor="hand2"
+        )
+        self.btn_preview.pack(side=tk.RIGHT, padx=4)
+
+        self.status_note = tk.Label(
+            self.action_bridge,
+            text=f"FoxVC Shell Ready • Lang v{FOXVC_LANGUAGE_VERSION} • Runtime v{FOXVC_RUNTIME_VERSION}",
+            bg=self.c_bg,
+            fg=self.c_text_muted,
+            font=("DejaVu Sans", 8)
+        )
+        self.status_note.pack(side=tk.LEFT, pady=4)
+
+        # Result Space Card
+        self.result_card = tk.Frame(
+            self.main_content,
+            bg=self.c_card,
+            bd=1,
+            highlightthickness=1,
+            highlightbackground=self.c_card_border
+        )
+        self.result_card.pack(fill=tk.BOTH, expand=False)
+        self.result_card.configure(height=230)
+        self.result_card.pack_propagate(False)
+
+        res_header = tk.Frame(self.result_card, bg="#181615", height=26)
+        res_header.pack(fill=tk.X, side=tk.TOP)
+
+        res_title = tk.Label(
+            res_header,
+            text="FOXVC RESULT SPACE",
+            bg="#181615",
+            fg=self.c_text_muted,
+            font=("DejaVu Sans", 8, "bold"),
+            padx=10,
+            pady=4
+        )
+        res_title.pack(side=tk.LEFT)
+
+        controls_box = tk.Frame(res_header, bg="#181615")
+        controls_box.pack(side=tk.RIGHT, padx=6)
+
+        self.btn_expand = tk.Button(
+            controls_box,
+            text="↕ Expand",
+            command=self.toggle_result_size,
+            bg="#181615",
+            fg=self.c_text_muted,
+            activebackground="#26221E",
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=6,
+            font=("DejaVu Sans", 8),
+            cursor="hand2"
+        )
+        self.btn_expand.pack(side=tk.LEFT, padx=2)
+
+        self.out_clear_btn = tk.Button(
+            controls_box,
+            text="Clear",
+            command=self.clear_result,
+            bg="#181615",
+            fg=self.c_text_muted,
+            activebackground="#26221E",
+            activeforeground="#FFFFFF",
+            bd=0,
+            padx=6,
+            font=("DejaVu Sans", 8),
+            cursor="hand2"
+        )
+        self.out_clear_btn.pack(side=tk.LEFT, padx=2)
+
+        # Native Input Bar
+        self.input_bar = tk.Frame(self.result_card, bg="#1F1B18", bd=1, highlightthickness=1, highlightbackground=self.c_orange_main)
+        self.input_prompt_label = tk.Label(self.input_bar, text="🦊 Input: ", bg="#1F1B18", fg="#FF7A00", font=("DejaVu Sans", 8, "bold"), padx=8)
+        self.input_prompt_label.pack(side=tk.LEFT)
+
+        self.input_entry = tk.Entry(self.input_bar, bg="#2A2420", fg="#FFFFFF", insertbackground="#FF7A00", font=("Monospace", 10, "bold"), relief=tk.FLAT, bd=4)
+        self.input_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6), pady=4)
+        self.input_entry.bind("<Return>", lambda e: self._submit_native_input())
+        self.btn_send = tk.Button(self.input_bar, text="↵ Send", command=self._submit_native_input, bg="#E65C00", fg="#FFFFFF", bd=0, padx=12, font=("DejaVu Sans", 8, "bold"), cursor="hand2")
+        self.btn_send.pack(side=tk.RIGHT, padx=4, pady=4)
+
+        # Result Text
+        self.result_body = tk.Frame(self.result_card, bg="#131211")
+        self.result_body.pack(fill=tk.BOTH, expand=True)
+
+        res_scroll_y = tk.Scrollbar(self.result_body, orient=tk.VERTICAL, bg="#181615")
+        res_scroll_y.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.result_text = tk.Text(
+            self.result_body,
+            wrap=tk.WORD,
+            bg="#131211",
+            fg="#E6DFD5",
+            font=("Monospace", 10),
+            relief=tk.FLAT,
+            bd=0,
+            padx=12,
+            pady=6,
+            yscrollcommand=res_scroll_y.set,
+            state=tk.DISABLED
+        )
+        res_scroll_y.configure(command=self.result_text.yview)
+        self.result_text.pack(fill=tk.BOTH, expand=True)
+
+        self.result_text.tag_configure("badge_success", foreground="#121110", background="#A3E635", font=("DejaVu Sans", 8, "bold"))
+        self.result_text.tag_configure("badge_pass", foreground="#121110", background="#86EFAC", font=("DejaVu Sans", 7, "bold"))
+        self.result_text.tag_configure("badge_fail", foreground="#FFFFFF", background="#EF4444", font=("DejaVu Sans", 7, "bold"))
+        self.result_text.tag_configure("badge_blocked", foreground="#121110", background="#FDE047", font=("DejaVu Sans", 7, "bold"))
+        self.result_text.tag_configure("badge_error", foreground="#FFFFFF", background="#D32F2F", font=("DejaVu Sans", 8, "bold"))
+        self.result_text.tag_configure("badge_web", foreground="#121110", background="#38BDF8", font=("DejaVu Sans", 8, "bold"))
+        self.result_text.tag_configure("output_content", foreground="#F0EDE8", font=("Monospace", 10))
+        self.result_text.tag_configure("error_content", foreground="#FF8585", font=("Monospace", 10))
+        self.result_text.tag_configure("blocked_content", foreground="#FDE047", font=("Monospace", 9))
+        self.result_text.tag_configure("meta_info", foreground="#7A7067", font=("Monospace", 9, "italic"))
+        self.result_text.tag_configure("summary_header", foreground="#FF7A00", font=("DejaVu Sans", 9, "bold"))
+
+    def _build_context_menus(self):
+        menu_kwargs = {
+            "tearoff": 0, "bg": "#1C1917", "fg": "#E0D6CC",
+            "activebackground": self.c_orange_main, "activeforeground": "#FFFFFF",
+            "disabledforeground": "#5C544C", "bd": 1, "font": ("DejaVu Sans", 9)
+        }
+        self.editor_menu = tk.Menu(self.root, **menu_kwargs)
+        self.editor_menu.add_command(label="Cut", accelerator="Ctrl+X", command=lambda: self.editor.event_generate("<<Cut>>"))
+        self.editor_menu.add_command(label="Copy", accelerator="Ctrl+C", command=lambda: self.editor.event_generate("<<Copy>>"))
+        self.editor_menu.add_command(label="Paste", accelerator="Ctrl+V", command=lambda: self.editor.event_generate("<<Paste>>"))
+        self.editor_menu.add_separator()
+        self.editor_menu.add_command(label="Select All", accelerator="Ctrl+A", command=self._menu_select_all)
+
+        self.editor.bind("<Button-3>", lambda e: self.editor_menu.tk_popup(e.x_root, e.y_root))
+
+    def _bind_events(self):
+        self.editor.bind("<KeyRelease>", self._on_key_release)
+        self.editor.bind("<MouseWheel>", lambda e: self.root.after_idle(self.lines.redraw))
+        self.root.bind("<Control-n>", lambda e: self.new_file())
+        self.root.bind("<Control-o>", lambda e: self.open_file_dialog())
+        self.root.bind("<Control-O>", lambda e: self.open_folder_dialog())
+        self.root.bind("<Control-s>", lambda e: self.save_file())
+        self.root.bind("<Control-S>", lambda e: self.save_file_as())
+        self.root.bind("<Control-w>", lambda e: self.close_active_tab())
+        self.root.bind("<Control-a>", lambda e: self._menu_select_all())
+        self.root.bind("<F5>", lambda e: self.run_code())
+        self.root.bind("<F6>", lambda e: self.run_diagnostics())
+        self.root.bind("<F7>", lambda e: self.launch_web_app())
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def _menu_select_all(self):
+        self.editor.tag_add(tk.SEL, "1.0", tk.END)
+        self.editor.mark_set(tk.INSERT, "1.0")
+
+    def _on_scroll_y(self, *args):
+        self.editor.yview(*args)
+        self.lines.redraw()
+
+    def _on_key_release(self, event=None):
+        doc = self.get_active_doc()
+        if doc:
+            doc.is_modified = True
+            doc.content = self.editor.get("1.0", tk.END)
+        self.update_tab_bar()
+        self.update_doc_title()
+        self.lines.redraw()
+        self.highlight_syntax()
+
+    def get_active_doc(self):
+        if 0 <= self.active_doc_idx < len(self.documents):
+            return self.documents[self.active_doc_idx]
+        return None
+
+    def update_doc_title(self):
+        doc = self.get_active_doc()
+        if doc:
+            dirty = "● " if doc.is_modified else ""
+            fmt = detect_source_format(doc.filepath)
+            self.root.title(f"🦊 {dirty}{doc.title} [{fmt}] — FoxVC Studio")
+            self.doc_tag.config(text=f"🦊 {dirty}{doc.title} ({fmt})")
+        else:
+            self.root.title(f"FoxVC Studio (v{FOXVC_STUDIO_VERSION})")
+            self.doc_tag.config(text="• Ready")
+
+    def update_tab_bar(self):
+        for widget in self.tab_bar_frame.winfo_children():
+            widget.destroy()
+
+        for idx, doc in enumerate(self.documents):
+            is_active = (idx == self.active_doc_idx)
+            tab_bg = "#23201D" if is_active else "#161514"
+            tab_fg = "#FFFFFF" if is_active else "#8E8379"
+
+            tab_btn = tk.Frame(self.tab_bar_frame, bg=tab_bg, padx=6, pady=2)
+            tab_btn.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 2))
+
+            dirty = "● " if doc.is_modified else ""
+            lbl = tk.Label(tab_btn, text=f"{dirty}{doc.title}", bg=tab_bg, fg=tab_fg, font=("DejaVu Sans", 9))
+            lbl.pack(side=tk.LEFT, padx=(4, 6))
+            lbl.bind("<Button-1>", lambda e, i=idx: self.switch_tab(i))
+
+            close_btn = tk.Label(tab_btn, text="✕", bg=tab_bg, fg="#A3968A", font=("DejaVu Sans", 8))
+            close_btn.pack(side=tk.RIGHT, padx=(2, 4))
+            close_btn.bind("<Button-1>", lambda e, i=idx: self.close_tab(i))
+            close_btn.bind("<Enter>", lambda e, w=close_btn: w.config(fg="#FF7A00"))
+            close_btn.bind("<Leave>", lambda e, w=close_btn: w.config(fg="#A3968A"))
+
+    def switch_tab(self, idx):
+        if idx < 0 or idx >= len(self.documents):
+            return
+        cur_doc = self.get_active_doc()
+        if cur_doc:
+            cur_doc.content = self.editor.get("1.0", tk.END)
+
+        self.active_doc_idx = idx
+        new_doc = self.documents[idx]
+
+        self.editor.delete("1.0", tk.END)
+        self.editor.insert("1.0", new_doc.content)
+        self.update_tab_bar()
+        self.update_doc_title()
+        self.lines.redraw()
+        self.highlight_syntax()
+
+    def close_tab(self, idx):
+        if idx < 0 or idx >= len(self.documents):
+            return
+        doc = self.documents[idx]
+        if doc.is_modified:
+            ans = messagebox.askyesnocancel("Unsaved Changes", f"Save changes to {doc.title} before closing?")
+            if ans is True:
+                self.switch_tab(idx)
+                if not self.save_file():
+                    return
+            elif ans is None:
+                return
+
+        del self.documents[idx]
+        if not self.documents:
+            self.new_file()
+        else:
+            new_idx = max(0, idx - 1)
+            self.switch_tab(new_idx)
+
+    def close_active_tab(self):
+        self.close_tab(self.active_doc_idx)
+
+    def new_file(self):
+        # Untitled default: plain clean document ready to be named on save
+        doc = DocumentTab(filepath=None, title="untitled.fox", content="")
+        self.documents.append(doc)
+        self.switch_tab(len(self.documents) - 1)
+        self.status_note.config(text="New document ready (untitled.fox).")
+
+    def open_file_dialog(self):
+        filepaths = filedialog.askopenfilenames(
+            filetypes=[
+                ("All FoxVC Files", "*.fox;*.fweb;*.fskin;*.flogic"),
+                ("FoxVC Files (*.fox)", "*.fox"),
+                ("FoxVC Web (*.fweb)", "*.fweb"),
+                ("FoxVC Skin (*.fskin)", "*.fskin"),
+                ("FoxVC Logic (*.flogic)", "*.flogic"),
+                ("All Files", "*.*")
+            ]
+        )
+        if filepaths:
+            for fp in filepaths:
+                self.open_file_path(os.path.abspath(fp))
+
+    def open_file_path(self, filepath):
+        for idx, doc in enumerate(self.documents):
+            if doc.filepath and os.path.abspath(doc.filepath) == os.path.abspath(filepath):
+                self.switch_tab(idx)
+                return
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                code = f.read()
+            doc = DocumentTab(filepath=filepath, title=os.path.basename(filepath), content=code)
+            self.documents.append(doc)
+            self.switch_tab(len(self.documents) - 1)
+            self.status_note.config(text=f"Loaded: {os.path.basename(filepath)}")
+        except Exception as e:
+            messagebox.showerror("FoxVC Studio", f"Could not load file:\n{e}")
+
+    def open_folder_dialog(self):
+        folder = filedialog.askdirectory(title="Select FoxVC Project Folder")
+        if folder:
+            self.open_folder_path(os.path.abspath(folder))
+
+    def open_folder_path(self, folderpath):
+        self.project_dir = folderpath
+        self.side_title.config(text=f"📁 {os.path.basename(folderpath).upper()}")
+        self._populate_tree(folderpath)
+        self.status_note.config(text=f"Project folder opened: {os.path.basename(folderpath)}")
+
+    def _populate_tree(self, folderpath):
+        self.file_tree.delete(*self.file_tree.get_children())
+        self._append_tree_nodes("", folderpath)
+
+    def _append_tree_nodes(self, parent, path):
+        try:
+            items = sorted(os.listdir(path))
+        except Exception:
+            return
+
+        # Show directories first, then files
+        dirs = [i for i in items if os.path.isdir(os.path.join(path, i)) and not i.startswith(".")]
+        files = [i for i in items if os.path.isfile(os.path.join(path, i)) and not i.startswith(".")]
+
+        for d in dirs:
+            full_p = os.path.join(path, d)
+            node = self.file_tree.insert(parent, "end", text=f"📁 {d}", values=[full_p, "dir"], open=False)
+            self._append_tree_nodes(node, full_p)
+
+        for f in files:
+            full_p = os.path.join(path, f)
+            icon = "🦊" if f.endswith((".fox", ".fweb", ".fskin", ".flogic")) else "📄"
+            self.file_tree.insert(parent, "end", text=f"{icon} {f}", values=[full_p, "file"])
+
+    def _on_tree_item_clicked(self, event=None):
+        selected = self.file_tree.selection()
+        if not selected:
+            return
+        item_vals = self.file_tree.item(selected[0], "values")
+        if item_vals and len(item_vals) >= 2:
+            fpath, ftype = item_vals[0], item_vals[1]
+            if ftype == "file":
+                self.open_file_path(fpath)
+
+    def save_file(self):
+        doc = self.get_active_doc()
+        if not doc:
+            return False
+        if not doc.filepath:
+            return self.save_file_as()
+        try:
+            doc.content = self.editor.get("1.0", tk.END)
+            with open(doc.filepath, "w", encoding="utf-8") as f:
+                f.write(doc.content.rstrip() + "\n")
+            doc.is_modified = False
+            self.update_tab_bar()
+            self.update_doc_title()
+            self.status_note.config(text=f"Saved: {doc.title}")
+            return True
+        except Exception as e:
+            messagebox.showerror("FoxVC Studio", f"Could not save file:\n{e}")
+            return False
+
+    def save_file_as(self):
+        doc = self.get_active_doc()
+        if not doc:
+            return False
+        filepath = filedialog.asksaveasfilename(
+            initialfile=doc.title,
+            filetypes=[
+                ("FoxVC Files (*.fox)", "*.fox"),
+                ("FoxVC Web (*.fweb)", "*.fweb"),
+                ("FoxVC Skin (*.fskin)", "*.fskin"),
+                ("FoxVC Logic (*.flogic)", "*.flogic"),
+                ("All Files", "*.*")
+            ]
+        )
+        if not filepath:
+            return False
+        doc.filepath = os.path.abspath(filepath)
+        doc.title = os.path.basename(filepath)
+        return self.save_file()
+
+    def highlight_syntax(self):
+        self.editor.tag_remove("keyword", "1.0", tk.END)
+        self.editor.tag_remove("string", "1.0", tk.END)
+        content = self.editor.get("1.0", tk.END)
+        lines = content.split("\n")
+
+        for line_idx, line in enumerate(lines, start=1):
+            for kw in ("say", "ask", "element", "set", "add", "bind", "mount", "show", "render", "use", "skin", "apply", "action", "state"):
+                idx = 0
+                kw_len = len(kw)
+                while idx < len(line):
+                    pos = line.find(kw, idx)
+                    if pos == -1:
+                        break
+                    is_start = (pos == 0 or not line[pos-1].isalnum())
+                    is_end = (pos + kw_len >= len(line) or not line[pos+kw_len].isalnum())
+                    if is_start and is_end:
+                        self.editor.tag_add("keyword", f"{line_idx}.{pos}", f"{line_idx}.{pos+kw_len}")
+                    idx = pos + kw_len
+
+            in_string = False
+            start_col = 0
+            for col_idx, char in enumerate(line):
+                if char == '"':
+                    if not in_string:
+                        in_string = True
+                        start_col = col_idx
+                    else:
+                        in_string = False
+                        self.editor.tag_add("string", f"{line_idx}.{start_col}", f"{line_idx}.{col_idx+1}")
+
+    def clear_result(self):
+        self.is_waiting_for_input = False
+        self.input_bar.pack_forget()
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.delete("1.0", tk.END)
+        self.result_text.config(state=tk.DISABLED)
+
+    def _submit_native_input(self):
+        if not self.is_waiting_for_input:
+            return
+        self.is_waiting_for_input = False
+        val = self.input_entry.get()
+        self.input_entry.delete(0, tk.END)
+        self.input_queue.put(val)
+
+    def _request_input_from_thread(self, prompt: str) -> str:
+        def show_input_ui():
+            self.result_text.config(state=tk.NORMAL)
+            self.result_text.insert(tk.END, f" 🦊 {prompt}\n", "summary_header")
+            self.result_text.config(state=tk.DISABLED)
+            self.input_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=4, before=self.result_body)
+            self.input_entry.focus_set()
+            self.is_waiting_for_input = True
+
+        self.root.after(0, show_input_ui)
+        val = self.input_queue.get()
+        self.root.after(0, lambda: self.input_bar.pack_forget())
+        return val
+
+    def run_code(self):
+        if self.is_running:
+            return
+        doc = self.get_active_doc()
+        if not doc:
+            return
+        self.is_running = True
+        self.btn_run.config(state=tk.DISABLED)
+        self.clear_result()
+        self.status_note.config(text=f"Executing {doc.title}...")
+
+        source = self.editor.get("1.0", tk.END)
+        fpath = doc.filepath
+
+        def worker():
+            res = run_foxvc(source, input_source=self._request_input_from_thread, file_path=fpath)
+            self.root.after(0, lambda: self._on_execution_complete(res))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def run_diagnostics(self):
+        if self.is_running:
+            return
+        doc = self.get_active_doc()
+        if not doc:
+            return
+        self.is_running = True
+        self.btn_diag.config(state=tk.DISABLED)
+        self.clear_result()
+        self.status_note.config(text=f"Running diagnostics on {doc.title}...")
+
+        source = self.editor.get("1.0", tk.END)
+        fpath = doc.filepath
+
+        def worker():
+            res = run_foxvc_diagnostic(source, input_source=self._request_input_from_thread, file_path=fpath)
+            self.root.after(0, lambda: self._on_diagnostic_complete(res))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def launch_web_app(self):
+        doc = self.get_active_doc()
+        if not doc:
+            return
+        source = self.editor.get("1.0", tk.END)
+        fpath = doc.filepath
+        res = run_foxvc(source, file_path=fpath)
+        if res.success and res.is_web_app:
+            url = FoxWebRuntime.launch(res.web_app)
+            self.status_note.config(text=f"Mounted at {url}")
+        elif not res.success:
+            self._on_execution_complete(res)
+            messagebox.showerror("FoxVC Diagnostic Error", f"Cannot launch WebApplication:\n{res.error}")
+        else:
+            messagebox.showinfo("FoxVC Web Runtime", "No WebApplication detected. Construct or mount an element to launch.")
+
+    def _on_execution_complete(self, result):
+        self.is_running = False
+        self.btn_run.config(state=tk.NORMAL)
+
+        self.result_text.config(state=tk.NORMAL)
+        if result.success:
+            self.result_text.insert(tk.END, " FINISHED ", "badge_success")
+            self.result_text.insert(tk.END, "  Program executed cleanly.\n\n", "meta_info")
+            if result.output:
+                self.result_text.insert(tk.END, result.output + "\n", "output_content")
+            if result.is_web_app:
+                self.result_text.insert(tk.END, "\n WEB APP ", "badge_web")
+                self.result_text.insert(tk.END, f"  Live WebApplication mounted (<{result.web_app.root.kind}>). Press '🌐 LAUNCH APP (F7)' to view.\n", "output_content")
+            self.status_note.config(text="Execution finished.")
+        else:
+            self.result_text.insert(tk.END, " DIAGNOSTIC ", "badge_error")
+            self.result_text.insert(tk.END, f"  Execution halted.\n\n{result.error}\n", "error_content")
+            self.status_note.config(text="Execution halted on diagnostic error.")
+
+        self.result_text.see(tk.END)
+        self.result_text.config(state=tk.DISABLED)
+
+    def _on_diagnostic_complete(self, result):
+        self.is_running = False
+        self.btn_diag.config(state=tk.NORMAL)
+
+        self.result_text.config(state=tk.NORMAL)
+        self.result_text.insert(tk.END, " FOXVC DIAGNOSTIC EXECUTION REPORT \n\n", "summary_header")
+
+        for r in result.statement_reports:
+            line_str = str(r.line).zfill(2)
+            if r.status == StatementStatus.PASS:
+                self.result_text.insert(tk.END, f"[{line_str}] ", "meta_info")
+                self.result_text.insert(tk.END, " PASS ", "badge_pass")
+                if r.variable:
+                    self.result_text.insert(tk.END, f"  {r.variable} = {r.value}\n", "output_content")
+                elif r.output:
+                    self.result_text.insert(tk.END, f"  {r.output}\n", "output_content")
+                else:
+                    self.result_text.insert(tk.END, f"  {r.source}\n", "meta_info")
+            elif r.status == StatementStatus.FAIL:
+                self.result_text.insert(tk.END, f"[{line_str}] ", "meta_info")
+                self.result_text.insert(tk.END, " FAIL ", "badge_fail")
+                self.result_text.insert(tk.END, f"  {r.source} -> {r.diagnostic.message}\n", "error_content")
+            elif r.status == StatementStatus.BLOCKED:
+                self.result_text.insert(tk.END, f"[{line_str}] ", "meta_info")
+                self.result_text.insert(tk.END, " BLOCKED ", "badge_blocked")
+                self.result_text.insert(tk.END, f"  {r.source} -> {r.blocked_reason}\n", "blocked_content")
+
+        if result.summary:
+            s = result.summary
+            self.result_text.insert(tk.END, "\n--- Diagnostic Summary ---\n", "summary_header")
+            self.result_text.insert(tk.END, f"Passed: {s.passed}  |  Failed: {s.failed}  |  Blocked: {s.blocked}\n", "meta_info")
+
+        self.result_text.see(tk.END)
+        self.result_text.config(state=tk.DISABLED)
+
+    def toggle_result_size(self):
+        self.is_result_expanded = not self.is_result_expanded
+        self.result_card.configure(height=380 if self.is_result_expanded else 230)
+        self.btn_expand.config(text="↕ Normal" if self.is_result_expanded else "↕ Expand")
+
+    def on_close(self):
+        for idx, doc in enumerate(self.documents):
+            if doc.is_modified:
+                ans = messagebox.askyesnocancel("Unsaved Changes", f"Save changes to {doc.title} before exiting?")
+                if ans is True:
+                    self.switch_tab(idx)
+                    self.save_file()
+                elif ans is None:
+                    return
+        self.root.destroy()
+
+def main():
+    root = tk.Tk()
+    initial_file = sys.argv[1] if len(sys.argv) > 1 else None
+    app = FoxVCStudio(root, initial_file=initial_file)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()

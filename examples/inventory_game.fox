@@ -1,0 +1,17 @@
+# inventory_game.fox - Data Structures & Cycles Demo 🎒
+inventory = ["Wood Sword", "Health Potion", "Iron Shield"]
+hero = { hp: 100, level: 1, alive: aye }
+
+act take_damage(player, dmg)
+    player.hp -= dmg
+    pick player.hp <= 0
+        player.alive = nay
+        say "Hero has fallen!"
+    otherwise
+        say "Hero took " + dmg + " damage! HP remaining: " + player.hp
+
+take_damage(hero, 35)
+
+say "Inventory Items:"
+cycle i in len(inventory)
+    say "- " + inventory[i]

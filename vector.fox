@@ -1,0 +1,15 @@
+# vector.fox - Pure FoxVC Vector Module 📐
+mold Vec2 {
+    x: 0,
+    y: 0
+}
+
+act vec_add(a, b)
+    emit { x: a.x + b.x, y: a.y + b.y }
+
+act vec_dist(a, b)
+    dx = b.x - a.x
+    dy = b.y - a.y
+    emit sqrt((dx * dx) + (dy * dy))
+
+say "✓ Native module 'vector.fox' fused successfully!"

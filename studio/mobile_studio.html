@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoxVC Mobile Studio</title>
+    <style>
+        body { margin: 0; background: #121212; color: #d4d4d4; font-family: monospace; padding: 12px; }
+        header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e05a1b; padding-bottom: 8px; }
+        h1 { margin: 0; font-size: 1.2rem; color: #e05a1b; }
+        textarea { width: 100%; height: 260px; background: #1a1a1a; color: #ffffff; border: 1px solid #333; padding: 8px; font-size: 1rem; border-radius: 4px; box-sizing: border-box; }
+        button { background: #e05a1b; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 8px; }
+        #output { margin-top: 12px; background: #0e0e0e; color: #4ec9b0; padding: 10px; border-radius: 4px; min-height: 100px; white-space: pre-wrap; border: 1px solid #222; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🦊 FoxVC Studio</h1>
+    </header>
+    <p>Minimalist, deterministic interactive programming environment.</p>
+    <textarea id="code">call shelf "mathx"
+shelf "physics"
+distance = 120
+time = 8
+speed = distance / time
+f = force(50, 2)
+say "Speed: " + speed
+say "Force: " + f
+say "FoxVC Mobile Engine Connected!"</textarea>
+    <br>
+    <button onclick="runCode()">⚡ Execute (F5)</button>
+    <div id="output">Output will appear here...</div>
+    <script>
+        async function runCode() {
+            const code = document.getElementById('code').value;
+            const out = document.getElementById('output');
+            out.textContent = "Executing...";
+            try {
+                const res = await fetch('/api/run', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({code})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    out.textContent = data.output || "Execution succeeded with no stdout.";
+                } else {
+                    out.textContent = "ERROR: " + (data.error || "Unknown error");
+                }
+            } catch (err) {
+                out.textContent = "Client error: " + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

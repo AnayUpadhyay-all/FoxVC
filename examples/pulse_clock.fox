@@ -1,0 +1,12 @@
+# pulse_clock.fox - Real-time Frame Pulse Demo ⏱️
+drone = { x: 0, speed: 25 }
+frames = 0
+
+say "Starting drone simulation..."
+pulse dt
+    drone.x += round(drone.speed * dt, 2)
+    frames += 1
+    say "Frame " + frames + " | Delta: " + dt + " | Drone X: " + drone.x
+    pick frames >= 5
+        say "Simulation test completed!"
+        halt

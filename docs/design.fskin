@@ -1,0 +1,198 @@
+# FoxVC Documentation Design System (v0.3.7)
+# Fixed Full-Width Viewport & Dark Background Layout
+
+skin AppPage "page"
+set AppPage "background" "#090B10"
+set AppPage "color" "#E2E8F0"
+set AppPage "size" 15
+set AppPage "padding" 0
+set AppPage "margin" 0
+set AppPage "width" "100%"
+set AppPage "min-height" "100vh"
+
+# Top Navigation Bar
+skin TopBar "header"
+set TopBar "background" "#0F141F"
+set TopBar "border" "1px solid #1E2638"
+set TopBar "padding" 16
+set TopBar "position" "sticky"
+set TopBar "top" 0
+set TopBar "z-index" 50
+set TopBar "shadow" "0 10px 30px rgba(0,0,0,0.4)"
+set TopBar "width" "100%"
+
+skin BrandArea "container"
+set BrandArea "direction" "row"
+set BrandArea "justify" "space-between"
+set BrandArea "align" "center"
+set BrandArea "width" "100%"
+set BrandArea "max-width" 1240
+set BrandArea "margin" "0 auto"
+
+skin BrandName "heading"
+set BrandName "color" "#FF7A00"
+set BrandName "size" 22
+set BrandName "weight" "bold"
+set BrandName "margin" 0
+
+skin BrandSub "text"
+set BrandSub "color" "#718096"
+set BrandSub "size" 13
+set BrandSub "margin" 0
+
+skin MainNav "nav"
+set MainNav "direction" "row"
+set MainNav "gap" 8
+set MainNav "align" "center"
+
+skin NavLink "link"
+set NavLink "color" "#94A3B8"
+set NavLink "padding" 8
+set NavLink "radius" 6
+set NavLink "size" 13
+set NavLink "weight" "bold"
+set NavLink "transition" "color 0.15s ease, background 0.15s ease"
+
+skin NavLinkHover "link" when "hover"
+set NavLinkHover "color" "#FFFFFF"
+set NavLinkHover "background" "#1A2234"
+
+# Hero Showcase
+skin Hero "section"
+set Hero "background" "#0F141F"
+set Hero "padding" 60
+set Hero "margin" "24px auto"
+set Hero "max-width" 1240
+set Hero "width" "100%"
+set Hero "align" "center"
+set Hero "border" "1px solid #1E293B"
+set Hero "radius" 16
+set Hero "shadow" "0 20px 50px rgba(0,0,0,0.35)"
+
+skin Eyebrow "text"
+set Eyebrow "color" "#FF922B"
+set Eyebrow "size" 12
+set Eyebrow "weight" "bold"
+set Eyebrow "margin" 0
+
+skin HeroTitle "heading"
+set HeroTitle "color" "#F8FAFC"
+set HeroTitle "size" 42
+set HeroTitle "weight" "bold"
+set HeroTitle "margin" 16
+
+skin HeroText "text"
+set HeroText "color" "#94A3B8"
+set HeroText "size" 17
+set HeroText "max-width" 800
+set HeroText "margin" "0 auto 24px auto"
+
+skin PrimaryButton "button"
+set PrimaryButton "background" "#FF7A00"
+set PrimaryButton "color" "#FFFFFF"
+set PrimaryButton "padding" 14
+set PrimaryButton "radius" 8
+set PrimaryButton "weight" "bold"
+set PrimaryButton "size" 14
+set PrimaryButton "shadow" "0 8px 24px rgba(255, 122, 0, 0.25)"
+set PrimaryButton "transition" "transform 0.15s ease, background 0.15s ease"
+
+skin PrimaryButtonHover "button" when "hover"
+set PrimaryButtonHover "background" "#FF922B"
+set PrimaryButtonHover "transform" "translateY(-2px)"
+
+# Structured Sections & Grids
+skin Section "section"
+set Section "max-width" 1240
+set Section "width" "100%"
+set Section "margin" "40px auto"
+set Section "padding" 24
+
+skin SectionHeader "container"
+set SectionHeader "margin" "0 0 20px 0"
+
+skin SectionTitle "heading"
+set SectionTitle "color" "#F1F5F9"
+set SectionTitle "size" 28
+set SectionTitle "weight" "bold"
+set SectionTitle "margin" "0 0 8px 0"
+
+skin BodyText "text"
+set BodyText "color" "#94A3B8"
+set BodyText "size" 15
+set BodyText "margin" "0 0 12px 0"
+
+skin GridDeck "container"
+set GridDeck "columns" "repeat(auto-fit, minmax(280px, 1fr))"
+set GridDeck "gap" 20
+set GridDeck "margin" "16px 0"
+
+skin FeatureCard "card"
+set FeatureCard "background" "#111827"
+set FeatureCard "border" "1px solid #1F2937"
+set FeatureCard "radius" 12
+set FeatureCard "padding" 24
+set FeatureCard "shadow" "0 6px 16px rgba(0,0,0,0.2)"
+set FeatureCard "transition" "border-color 0.2s ease, transform 0.2s ease"
+
+skin FeatureCardHover "card" when "hover"
+set FeatureCardHover "border" "1px solid #FF7A00"
+set FeatureCardHover "transform" "translateY(-3px)"
+
+skin CardBadge "text"
+set CardBadge "color" "#FF922B"
+set CardBadge "size" 12
+set CardBadge "weight" "bold"
+set CardBadge "margin" "0 0 8px 0"
+
+skin CardTitle "heading"
+set CardTitle "color" "#F8FAFC"
+set CardTitle "size" 18
+set CardTitle "weight" "bold"
+set CardTitle "margin" "0 0 8px 0"
+
+skin CardText "text"
+set CardText "color" "#94A3B8"
+set CardText "size" 14
+set CardText "margin" 0
+
+# Interactive Code Console
+skin CodeCard "card"
+set CodeCard "background" "#05070A"
+set CodeCard "border" "1px solid #1E293B"
+set CodeCard "radius" 10
+set CodeCard "padding" 20
+set CodeCard "margin" "16px 0"
+set CodeCard "shadow" "inset 0 2px 6px rgba(0,0,0,0.6)"
+
+skin CodeTitle "heading"
+set CodeTitle "color" "#FF922B"
+set CodeTitle "size" 13
+set CodeTitle "weight" "bold"
+set CodeTitle "margin" "0 0 12px 0"
+
+skin CodeText "text"
+set CodeText "color" "#38BDF8"
+set CodeText "size" 14
+set CodeText "margin" 0
+
+skin MutedText "text"
+set MutedText "color" "#64748B"
+set MutedText "size" 13
+
+# Footer
+skin Footer "footer"
+set Footer "background" "#070A0F"
+set Footer "border" "1px solid #172033"
+set Footer "padding" 32
+set Footer "color" "#64748B"
+set Footer "align" "center"
+set Footer "margin" "60px 0 0 0"
+set Footer "width" "100%"
+
+# Responsive Overrides
+skin SectionMobile "section" at "mobile"
+set SectionMobile "padding" 16
+
+skin HeroMobile "section" at "mobile"
+set HeroMobile "padding" 24

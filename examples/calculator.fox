@@ -1,0 +1,15 @@
+# calculator.fox - Math & Conditionals Demo 🧮
+act calculate_trajectory(v0, angle_deg)
+    rad = angle_deg * (pi / 180)
+    vx = round(v0 * cos(rad), 2)
+    vy = round(v0 * sin(rad), 2)
+    emit { vx: vx, vy: vy }
+
+shot = calculate_trajectory(50, 45)
+say "Launch Velocity X: " + shot.vx
+say "Launch Velocity Y: " + shot.vy
+
+pick shot.vx > 30 also shot.vy > 30
+    say "Trajectory status: High Arc Nominal"
+otherwise
+    say "Trajectory status: Low Flat"

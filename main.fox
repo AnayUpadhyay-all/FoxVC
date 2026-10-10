@@ -1,0 +1,18 @@
+# main.fox - Welcome to FoxVC v0.5.2x (Zero-Overlap Lean Edition)
+say "🦊 FoxVC Engine v0.5.2x Online!"
+
+drone = {
+    x: 0,
+    speed: 15,
+    active: aye
+}
+
+act travel(d, distance)
+    d.x += distance
+    emit d.x
+
+pick drone.active
+    travel(drone, 45)
+    say "Drone deployed to coordinate: " + drone.x
+otherwise
+    say "Drone systems inactive."
