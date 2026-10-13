@@ -200,7 +200,8 @@ class Interpreter:
                         break
                     except SkipSignal:
                         continue
-                    time.sleep(0.016)
+                    delay = self.variables.get('__pulse_rate__', 0.016)
+                    time.sleep(max(0.001, float(delay)))
             except KeyboardInterrupt:
                 pass
             return None
