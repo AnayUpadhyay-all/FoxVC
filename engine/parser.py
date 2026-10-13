@@ -387,8 +387,8 @@ class Parser:
             self._skip_newlines()
 
         otherwise_body = None
-        if self._peek().type == TokenType.OTHERWISE:
-            self._consume(TokenType.OTHERWISE, "Expected 'otherwise'")
+        if self._peek().type in (TokenType.OTHERWISE, getattr(TokenType, "RECOVER", None)):
+            self._advance()
             self._skip_newlines()
             otherwise_body = self._parse_block()
 
@@ -429,8 +429,9 @@ class Parser:
         try_body = self._parse_block()
         catch_body = None
         self._skip_newlines()
-        if self._peek().type == TokenType.OTHERWISE:
-            self._consume(TokenType.OTHERWISE, "Expected 'otherwise'")
+        recover_types = (TokenType.OTHERWISE, getattr(TokenType, "RECOVER", None))
+        if self._peek().type in recover_types:
+            self._consume(self._peek().type, "Expected catch block keyword")
             self._skip_newlines()
             catch_body = self._parse_block()
         return TrapStatement(try_body, catch_body, tok.line, tok.column)

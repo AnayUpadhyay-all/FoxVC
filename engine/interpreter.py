@@ -148,6 +148,8 @@ class Interpreter:
             try:
                 for s in stmt.try_body:
                     self._execute_statement(s)
+            except (EmitSignal, HaltSignal, SkipSignal):
+                raise
             except Exception:
                 if stmt.catch_body:
                     for s in stmt.catch_body:
