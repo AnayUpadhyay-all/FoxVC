@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="foxvc",
-    version="0.5.2x",
+    version="0.5.4",
     description="FoxVC Programming Language - Zero-Overlap Lean Edition",
     author="Nexus Systems",
     packages=find_packages(),

@@ -65,6 +65,78 @@ def is_foxvc_number(val: Any) -> bool:
     return isinstance(val, (int, float)) and not isinstance(val, bool)
 
 
+
+class Environment:
+    def __init__(self, parent=None, initial=None):
+        self.bindings: Dict[str, Any] = dict(initial) if initial else {}
+        self.parent: Optional['Environment'] = parent
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key in self.bindings:
+            return self.bindings[key]
+        if self.parent is not None:
+            return self.parent.get(key, default)
+        return default
+
+    def define(self, key: str, value: Any):
+        self.bindings[key] = value
+
+    def __contains__(self, key: str) -> bool:
+        if key in self.bindings:
+            return True
+        if self.parent is not None:
+            return key in self.parent
+        return False
+
+    def __getitem__(self, key: str) -> Any:
+        if key in self.bindings:
+            return self.bindings[key]
+        if self.parent is not None:
+            return self.parent[key]
+        raise KeyError(key)
+
+    def __setitem__(self, key: str, value: Any):
+        curr = self
+        while curr is not None:
+            if key in curr.bindings:
+                curr.bindings[key] = value
+                return
+            curr = curr.parent
+        self.bindings[key] = value
+
+    def update(self, other):
+        for k, v in other.items():
+            self.bindings[k] = v
+
+    def clear(self):
+        self.bindings.clear()
+
+    def keys(self):
+        merged = {}
+        if self.parent is not None:
+            for k in self.parent.keys():
+                merged[k] = True
+        for k in self.bindings.keys():
+            merged[k] = True
+        return merged.keys()
+
+    def items(self):
+        merged = {}
+        if self.parent is not None:
+            merged.update(dict(self.parent.items()))
+        merged.update(self.bindings)
+        return merged.items()
+
+    def values(self):
+        return [v for _, v in self.items()]
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __len__(self):
+        return len(self.keys())
+
+
 class Interpreter:
 
     STANDARD_BUILTINS = {
@@ -77,8 +149,9 @@ class Interpreter:
     }
     def __init__(self):
         self.shelf = get_standard_shelf()
-        self.variables: Dict[str, Any] = dict(self.shelf)
-        self.variables.update({
+        self.global_env = Environment(initial=self.shelf)
+        self.current_env = self.global_env
+        self.global_env.update({
             'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args),
             'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args),
             'type': lambda x: type(x).__name__,
@@ -89,9 +162,23 @@ class Interpreter:
         self.active_file: Optional[str] = "main.fox"
         self.output_buffer: List[str] = []
 
+
+    @property
+    def variables(self):
+        return self.current_env
+
+    @variables.setter
+    def variables(self, val):
+        if isinstance(val, Environment):
+            self.current_env = val
+        elif isinstance(val, dict):
+            self.global_env = Environment(initial=val)
+            self.current_env = self.global_env
+
     def reset(self):
-        self.variables = dict(self.shelf)
-        self.variables.update({'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args), 'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args), 'type': lambda x: type(x).__name__})
+        self.global_env = Environment(initial=self.shelf)
+        self.global_env.update({'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args), 'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args), 'type': lambda x: type(x).__name__})
+        self.current_env = self.global_env
         self.locked_variables.clear()
         self.functions.clear()
         self.molds.clear()
@@ -349,10 +436,12 @@ class Interpreter:
                 if len(evaluated_args) != len(fn.params):
                     raise RuntimeError(f"Act '{fn_name}' expects {len(fn.params)} arguments, got {len(evaluated_args)}", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
 
-                saved_vars = dict(self.variables)
+                prev_env = self.current_env
+                call_env = Environment(parent=self.global_env)
                 for param, val in zip(fn.params, evaluated_args):
-                    self.variables[param] = val
+                    call_env.define(param, val)
 
+                self.current_env = call_env
                 return_val = None
                 try:
                     for s in fn.body:
@@ -360,7 +449,7 @@ class Interpreter:
                 except EmitSignal as sig:
                     return_val = sig.value
                 finally:
-                    self.variables = saved_vars
+                    self.current_env = prev_env
                 return return_val
 
             if fn_name in self.molds:

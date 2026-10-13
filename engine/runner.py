@@ -1,5 +1,5 @@
 """
-FoxVC Execution Runner (v0.5.2x)
+FoxVC Execution Runner (v0.5.4)
 Provides project execution, single file running, and diagnostic validation.
 """
 
@@ -71,7 +71,7 @@ def run_foxvc_project(target_path: str) -> int:
 
 def run_foxvc_diagnostic(target_path: str = ".") -> int:
     """Runs a health and syntax check over FoxVC files without side effects."""
-    print("🔍 FoxVC v0.5.2x Diagnostic Sweep...")
+    print("🔍 FoxVC v0.5.4 Diagnostic Sweep...")
     files_checked = 0
     errors_found = 0
 

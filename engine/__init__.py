@@ -1,5 +1,5 @@
 """
-FoxVC Core Engine (v0.5.2x)
+FoxVC Core Engine (v0.5.4)
 """
 
 from .lexer import Lexer, LexerError, Token, TokenType
@@ -21,3 +21,5 @@ __all__ = [
     "run_foxvc_project",
     "run_foxvc_diagnostic",
 ]
+
+__version__ = '0.5.4'
