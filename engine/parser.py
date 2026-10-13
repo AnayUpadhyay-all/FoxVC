@@ -210,10 +210,18 @@ class SkipStmt(ASTNode):
 
 
 class ParserError(Exception):
+    SOURCE_LINES = []
+
+    @classmethod
+    def set_source(cls, source: str):
+        cls.SOURCE_LINES = source.splitlines() if source else []
+
     def __init__(self, message: str, line: int = 0, column: int = 0, source_line: str = ''):
         self.message = message
         self.line = line
         self.column = column
+        if not source_line and self.SOURCE_LINES and 1 <= line <= len(self.SOURCE_LINES):
+            source_line = self.SOURCE_LINES[line - 1]
         msg = f"Parser Error [Line {line}, Col {column}]: {message}"
         if source_line:
             pointer = ' ' * max(0, column - 1) + '^'
@@ -222,7 +230,9 @@ class ParserError(Exception):
 
 
 class Parser:
-    def __init__(self, tokens: List[Token], filename: str = "main.fox"):
+    def __init__(self, tokens: List[Token], filename: str = "main.fox", source: str = ""):
+        if source:
+            ParserError.set_source(source)
         self.tokens = tokens
         self.pos = 0
         self.filename = filename
