@@ -380,9 +380,20 @@ class Interpreter:
             raise RuntimeError(f"Undefined act or shelf function '{fn_name}'", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
 
         if node_type == "BinaryOp":
+            op = node.op
+            if op == "also":
+                left = self._evaluate(node.left)
+                if not bool(left):
+                    return False
+                return bool(self._evaluate(node.right))
+            if op == "either":
+                left = self._evaluate(node.left)
+                if bool(left):
+                    return True
+                return bool(self._evaluate(node.right))
+
             left = self._evaluate(node.left)
             right = self._evaluate(node.right)
-            op = node.op
 
             if op == "+":
                 if isinstance(left, str) or isinstance(right, str):

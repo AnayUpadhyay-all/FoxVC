@@ -388,7 +388,7 @@ class Parser:
 
         otherwise_body = None
         if self._peek().type in (TokenType.OTHERWISE, getattr(TokenType, "RECOVER", None)):
-            self._advance()
+            self._consume(TokenType.OTHERWISE, "Expected 'otherwise'")
             self._skip_newlines()
             otherwise_body = self._parse_block()
 
