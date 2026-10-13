@@ -66,9 +66,23 @@ def is_foxvc_number(val: Any) -> bool:
 
 
 class Interpreter:
+
+    STANDARD_BUILTINS = {
+        'len': lambda x: len(x),
+        'abs': lambda x: abs(x),
+        'round': lambda x, n=0: round(x, int(n)) if n else round(x),
+        'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args),
+        'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args),
+        'type': lambda x: type(x).__name__,
+    }
     def __init__(self):
         self.shelf = get_standard_shelf()
         self.variables: Dict[str, Any] = dict(self.shelf)
+        self.variables.update({
+            'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args),
+            'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args),
+            'type': lambda x: type(x).__name__,
+        })
         self.locked_variables: set = set()
         self.functions: Dict[str, Any] = {}
         self.molds: Dict[str, Any] = {}
@@ -77,6 +91,7 @@ class Interpreter:
 
     def reset(self):
         self.variables = dict(self.shelf)
+        self.variables.update({'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args), 'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args), 'type': lambda x: type(x).__name__})
         self.locked_variables.clear()
         self.functions.clear()
         self.molds.clear()

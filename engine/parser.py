@@ -210,8 +210,15 @@ class SkipStmt(ASTNode):
 
 
 class ParserError(Exception):
-    def __init__(self, message: str, line: int = 0, column: int = 0):
-        super().__init__(f"Parser Error [Line {line}, Col {column}]: {message}")
+    def __init__(self, message: str, line: int = 0, column: int = 0, source_line: str = ''):
+        self.message = message
+        self.line = line
+        self.column = column
+        msg = f"Parser Error [Line {line}, Col {column}]: {message}"
+        if source_line:
+            pointer = ' ' * max(0, column - 1) + '^'
+            msg = chr(10).join([msg, '    ' + source_line.strip(), '    ' + pointer])
+        super().__init__(msg)
 
 
 class Parser:
