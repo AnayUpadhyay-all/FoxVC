@@ -1,3 +1,8 @@
+
+def format_fox_error(err: Exception, source: str = "") -> str:
+    msg = str(err)
+    return f"\n\033[1;31m[FoxVC Runtime Error]\033[0m: {msg}\n"
+
 """
 FoxVC Execution Runner (v0.5.4)
 Provides project execution, single file running, and diagnostic validation.
@@ -93,3 +98,89 @@ def run_foxvc_diagnostic(target_path: str = ".") -> int:
 
     print(f"\nDiagnostic finished: {files_checked} files inspected, {errors_found} errors.")
     return 1 if errors_found > 0 else 0
+
+
+def run_fast(source_code: str, debug: bool = False):
+    """
+    High-Performance Execution Pipeline:
+    Tries Native C Extension (-O3) first -> falls back to Python Bytecode VM.
+    """
+    import os, subprocess
+    from engine.lexer import Lexer
+    from engine.parser import Parser
+    from engine.bytecode import BytecodeCompiler, FoxVM
+
+    ast = Parser(Lexer(source_code).tokenize(), source=source_code).parse()
+    compiler = BytecodeCompiler()
+    code = compiler.compile(ast)
+
+    if debug:
+        print("--- COMPILED INSTRUCTIONS ---")
+        for i, inst in enumerate(code):
+            print(f"{i:02d}: {inst[0].name} {inst[1:]}")
+
+    # Try Native C Extension
+    try:
+        from engine.c_vm import FoxCVM
+        so_path = os.path.join(os.path.dirname(__file__), 'foxvm.so')
+        c_path = os.path.join(os.path.dirname(__file__), 'foxvm.c')
+        if not os.path.exists(so_path) and os.path.exists(c_path):
+            subprocess.run(['gcc', '-O3', '-shared', '-fPIC', c_path, '-o', so_path], check=True)
+        return FoxCVM().run(code)
+    except Exception as e:
+        if debug:
+            print(f"[VM Warning]: Native C VM fallback triggered: {e}")
+        return FoxVM().run(code)
+
+
+def run_foxvc(source: str, engine_mode: str = 'interp', debug: bool = False):
+    """
+    Multi-Tier Execution Dispatcher for FoxVC:
+    - 'interp' : Tree-walking interpreter (v0.5.4 default)
+    - 'vm'     : Pure Python Register Bytecode VM (v0.6)
+    - 'fast'   : Native C Extension VM with auto-fallback (-O3)
+    """
+    from engine.lexer import Lexer
+    from engine.parser import Parser
+
+    tokens = Lexer(source).tokenize()
+    ast = Parser(tokens, source=source).parse()
+
+    if engine_mode == 'interp':
+        from engine.interpreter import Interpreter, EmitSignal
+        interp = Interpreter()
+        try:
+            interp.execute(ast)
+            return None
+        except EmitSignal as sig:
+            return sig.value
+
+    elif engine_mode in ('vm', 'fast'):
+        from engine.bytecode import BytecodeCompiler, FoxVM
+        compiler = BytecodeCompiler()
+        code_pkg = compiler.compile(ast)
+
+        if debug:
+            code, funcs = code_pkg
+            print('--- BYTECODE ---')
+            for i, inst in enumerate(code):
+                print(f'{i:02d}: {inst[0].name} {inst[1:]}')
+
+        if engine_mode == "fast":
+            from engine.c_vm import FoxCVM
+            instructions = code_pkg[0] if isinstance(code_pkg, tuple) else code_pkg
+            functions = code_pkg[1] if isinstance(code_pkg, tuple) else {}
+            if FoxCVM.can_accelerate(instructions, functions):
+                try:
+                    return FoxCVM().run(instructions)
+                except Exception as e:
+                    if debug:
+                        print(f"[FoxCVM Fallback]: {e}")
+            elif debug:
+                print("[Hybrid Router]: Script uses dynamic features; executing on FoxVM.")
+
+        try:
+            return FoxVM().run(code_pkg)
+        except Exception as e:
+            sys.stderr.write(format_fox_error(e, source))
+            return None
