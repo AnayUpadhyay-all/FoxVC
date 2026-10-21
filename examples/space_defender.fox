@@ -1,0 +1,125 @@
+# Space Defender - A Complete 2D Arcade Game in FoxVC
+# Demonstrating Raylib Graphics, Collision Physics, File I/O High Scores & Game Loop
+
+say "🚀 Launching Space Defender..."
+
+# 1. Initialize High Score from Disk
+save_file = "high_score.json"
+high_score = 0
+pick fileExists(save_file)
+    data = jsonParse(readFile(save_file))
+    high_score = data["score"]
+otherwise
+    writeFile(save_file, jsonString({score: 0}))
+
+# 2. Window Setup
+openWindow(800, 600, "Space Defender [FoxVC Engine]")
+setFPS(60)
+
+# 3. Game State
+player_x = 380
+player_y = 520
+player_speed = 7
+score = 0
+lives = 3
+game_over = 0
+
+lasers = []
+enemies = []
+
+# Spawn initial wave of enemies
+cycle i in 5
+    ex = 100 + (i * 130)
+    ey = 50 + (i * 20)
+    push(enemies, [ex, ey, 2])
+
+# 4. Main Game Loop (pulse dt)
+pulse dt
+    startFrame()
+
+    pick game_over == 0
+        # Player Input
+        pick isKeyDown(263)  # Left arrow
+            player_x = clamp(player_x - player_speed, 20, 740)
+        pick isKeyDown(262)  # Right arrow
+            player_x = clamp(player_x + player_speed, 20, 740)
+
+        # Shoot Laser (Spacebar = 32)
+        pick isKeyPressed(32)
+            push(lasers, [player_x + 18, player_y - 10])
+
+        # Draw Player Ship
+        drawBox(player_x, player_y, 40, 20, 1)        # Orange Hull
+        drawBox(player_x + 15, player_y - 10, 10, 10, 4) # Blue Cockpit
+
+        # Update & Draw Lasers
+        l_idx = 0
+        spin l_idx < len(lasers)
+            las = lasers[l_idx]
+            las[1] = las[1] - 12
+            drawBox(las[0], las[1], 4, 12, 5) # Yellow laser beam
+
+            # Check collision with enemies
+            hit = 0
+            e_idx = 0
+            spin e_idx < len(enemies)
+                ene = enemies[e_idx]
+                pick rectCollides(las[0], las[1], 4, 12, ene[0], ene[1], 35, 25)
+                    score = score + 100
+                    ene[1] = -50
+                    ene[0] = random(50, 720)
+                    hit = 1
+                e_idx = e_idx + 1
+
+            pick hit == 1
+                remove_at(lasers, l_idx)
+            otherwise
+                pick las[1] < 0
+                    remove_at(lasers, l_idx)
+                otherwise
+                    l_idx = l_idx + 1
+
+        # Update & Draw Enemies
+        e_idx = 0
+        spin e_idx < len(enemies)
+            ene = enemies[e_idx]
+            ene[1] = ene[1] + ene[2]
+            drawBox(ene[0], ene[1], 35, 25, 3) # Red enemy drone
+
+            # Check collision with player
+            pick rectCollides(player_x, player_y, 40, 20, ene[0], ene[1], 35, 25)
+                lives = lives - 1
+                ene[1] = -50
+                ene[0] = random(50, 720)
+                pick lives <= 0
+                    game_over = 1
+                    pick score > high_score
+                        writeFile(save_file, jsonString({score: score}))
+
+            # Reset if off bottom
+            pick ene[1] > 600
+                ene[1] = -30
+                ene[0] = random(50, 720)
+
+            e_idx = e_idx + 1
+
+        # Draw HUD Stats
+        drawText("SCORE: " + score, 20, 20, 20, 0)
+        drawText("LIVES: " + lives, 20, 50, 20, 2)
+        drawText("HIGH SCORE: " + high_score, 580, 20, 20, 5)
+
+    otherwise
+        # Game Over Screen
+        drawText("GAME OVER", 300, 250, 40, 3)
+        drawText("FINAL SCORE: " + score, 310, 310, 24, 0)
+        drawText("Press ESC to exit window", 280, 360, 20, 5)
+
+    endFrame()
+
+    # Exit when window closed or ESC
+    pick windowClosed() == 1
+        halt
+
+closeWindow()
+say "Space Defender exited cleanly. Final score: " + score
+emit score

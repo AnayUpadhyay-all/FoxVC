@@ -129,6 +129,8 @@ def show_cli_help():
   {t['primary']}add <file.fox>{RESET}          Create a fresh .fox script with starter template 📝
   {t['primary']}remove <file.fox>{RESET}       Delete a .fox file from workspace 🗑️
   {t['primary']}run <file.fox>{RESET}          Execute a FoxVC script directly ⚡
+  {t['primary']}compile <file.fox>{RESET}      Compile to fast binary AOT bytecode (.foxc) ⚡
+  {t['primary']}build <file.fox> [-o bin]{RESET} Build standalone native executable binary 📦
 
 {t['accent']}Den Sandbox & Interactive Tools:{RESET}
   {t['primary']}exercise{RESET}                 First interactive greeting exercise for beginners 🎓
@@ -588,6 +590,21 @@ def main():
         from engine.c_vm import FoxCVM
         out = FoxCVM().compile_fox_file(src)
         print(f"⚡ Successfully compiled '{src}' -> '{out}' (AOT Bytecode)")
+        sys.exit(0)
+
+    if cmd == "build":
+        if len(args) < 2:
+            print("Error: Expected file path. Usage: foxvc build <file.fox> [-o output_binary]", file=sys.stderr)
+            sys.exit(1)
+        src = args[1]
+        out_name = None
+        if "-o" in args:
+            o_idx = args.index("-o")
+            if o_idx + 1 < len(args):
+                out_name = args[o_idx + 1]
+        from engine.builder import build_standalone_binary
+        bin_path = build_standalone_binary(src, out_name)
+        print(f"📦 Successfully built standalone native executable: {bin_path}")
         sys.exit(0)
 
     if cmd == "run":
