@@ -131,6 +131,7 @@ def show_cli_help():
   {t['primary']}run <file.fox>{RESET}          Execute a FoxVC script directly ⚡
 
 {t['accent']}Den Sandbox & Interactive Tools:{RESET}
+  {t['primary']}exercise{RESET}                 First interactive greeting exercise for beginners 🎓
   {t['primary']}den sandbox{RESET}             Enter persistent multiline scratchpad 🧪
   {t['primary']}theme [name]{RESET}            Switch theme ({', '.join(THEMES.keys())}) 🎨
   {t['primary']}assist [topic]{RESET}          FoxVC architectural advice and recipes 💡
@@ -447,7 +448,12 @@ def start_outer_cli():
                 cmd = parts[0].lower()
                 args = parts[1:]
 
-                # 1. Den Sandbox Entry Point
+                # 1. Den Sandbox & Exercise Entry Points
+                if cmd in ("exercise", "tutorial", "start", "learn"):
+                    from engine.exercise import run_beginner_exercise
+                    run_beginner_exercise()
+                    continue
+
                 if cmd == "den" and args and args[0].lower() == "sandbox":
                     enter_den_sandbox(interp)
                     continue
@@ -563,6 +569,11 @@ def main():
 
     if cmd in ("-h", "--help", "help"):
         show_cli_help()
+        return
+
+    if cmd in ("exercise", "tutorial", "start", "learn"):
+        from engine.exercise import run_beginner_exercise
+        run_beginner_exercise()
         return
 
     if cmd == "check":

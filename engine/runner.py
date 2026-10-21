@@ -1,8 +1,12 @@
 
 def format_fox_diagnostic(err: Exception, source: str, line_no: int = None, filename: str = "<script>") -> str:
     msg = str(err)
+    from engine.friendly_errors import explain_error_in_everyday_language
+    hint = explain_error_in_everyday_language(msg, source)
+    hint_str = f"\n\033[36m{hint}\033[0m\n" if hint else ""
+
     if not line_no or not source:
-        return f"\n\033[1;31m[FoxVC Runtime Error]\033[0m: {msg}\n"
+        return f"\n\033[1;31m[FoxVC Runtime Error]\033[0m: {msg}\n{hint_str}"
     
     lines = source.splitlines()
     snippet = ""
@@ -10,7 +14,7 @@ def format_fox_diagnostic(err: Exception, source: str, line_no: int = None, file
         line_content = lines[line_no - 1]
         snippet = f"\n  --> {filename}:{line_no}\n   |\n{line_no:2d} | {line_content}\n   | \033[1;31m^^^^\033[0m"
     
-    return f"\n\033[1;31m[FoxVC Runtime Error]\033[0m: {msg}{snippet}\n"
+    return f"\n\033[1;31m[FoxVC Runtime Error]\033[0m: {msg}{snippet}\n{hint_str}"
 
 
 def format_fox_error(err: Exception, source: str = "") -> str:
@@ -81,9 +85,12 @@ def run_foxvc_code(code: str, filename: str = "<memory>", interp: Interpreter = 
             "output": interp.output_buffer
         }
     except (LexerError, ParserError, FoxRuntimeError) as err:
+        from engine.friendly_errors import explain_error_in_everyday_language
+        hint = explain_error_in_everyday_language(str(err), code)
+        err_text = f"{err}\n\n\033[36m{hint}\033[0m" if hint else str(err)
         return {
             "success": False,
-            "error": str(err),
+            "error": err_text,
             "variables": interp.variables,
             "output": interp.output_buffer
         }

@@ -140,6 +140,8 @@ class FoxCVM:
         }
 
         var_map = {}
+        str_regs = {}
+        str_vars = {}
 
         # Precompute flat offset for each instruction so JUMP targets match flat bytecode IPs
         inst_to_flat = {}
@@ -193,16 +195,30 @@ class FoxCVM:
 
             if op == Op.LOAD_CONST:
                 r, val = inst[1], inst[2]
-                flat_inst.extend([r, get_num_idx(val if isinstance(val, (int, float, bool)) else 0.0)])
+                if isinstance(val, str):
+                    s_idx = get_str_idx(val)
+                    str_regs[r] = s_idx
+                    flat_inst.extend([r, get_num_idx(0.0)])
+                else:
+                    str_regs.pop(r, None)
+                    flat_inst.extend([r, get_num_idx(val if isinstance(val, (int, float, bool)) else 0.0)])
             elif op == Op.LOAD_VAR:
                 dst = inst[1]
                 var_name = inst[2]
+                if var_name in str_vars:
+                    str_regs[dst] = str_vars[var_name]
+                else:
+                    str_regs.pop(dst, None)
                 if var_name not in var_map:
                     var_map[var_name] = len(var_map)
                 flat_inst.extend([dst, var_map[var_name]])
             elif op == Op.STORE_VAR:
                 var_name = inst[1]
                 src = inst[2]
+                if src in str_regs:
+                    str_vars[var_name] = str_regs[src]
+                else:
+                    str_vars.pop(var_name, None)
                 if var_name not in var_map:
                     var_map[var_name] = len(var_map)
                 flat_inst.extend([var_map[var_name], src])
@@ -216,7 +232,10 @@ class FoxCVM:
                 target = inst_to_flat.get(inst[2], inst[2])
                 flat_inst.extend([inst[1], target])
             elif op == Op.PRINT:
-                flat_inst.extend([0, inst[1]])
+                if inst[1] in str_regs:
+                    flat_inst.extend([1, str_regs[inst[1]]])
+                else:
+                    flat_inst.extend([0, inst[1]])
             elif op == Op.EMIT:
                 flat_inst.append(inst[1])
             elif op == Op.HALT:
