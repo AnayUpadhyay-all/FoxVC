@@ -263,17 +263,19 @@ class Parser:
 
     def parse(self) -> Program:
         statements = []
-        self._skip_newlines()
+        self._skip_layout()
         while self._peek().type != TokenType.EOF:
             stmt = self._parse_statement()
             if stmt:
                 statements.append(stmt)
-            self._skip_newlines()
+            self._skip_layout()
         return Program(statements, self.filename)
 
     def _parse_statement(self) -> Optional[ASTNode]:
-        self._skip_newlines()
+        self._skip_layout()
         tok = self._peek()
+        if tok.type == TokenType.EOF:
+            return None
 
         if tok.type == TokenType.ACT:
             return self._parse_act()

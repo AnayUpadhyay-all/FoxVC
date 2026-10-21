@@ -12,6 +12,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 import readline
 import subprocess
+import textwrap
 
 from engine.runner import run_foxvc_project, run_foxvc_diagnostic, run_foxvc_code
 from engine.interpreter import Interpreter, FoxPack
@@ -141,7 +142,8 @@ def show_cli_help():
 
 
 def validate_fox_extension(filename: str) -> bool:
-    return filename.strip().endswith(".fox")
+    f = filename.strip()
+    return f.endswith(".fox") or f.endswith(".foxc")
 
 
 def handle_view(args: list):
@@ -301,6 +303,29 @@ pulse dt
 # ============================================================================
 # The Den Sandbox Sub-Environment (Persistent & Clean Multi-line Prompt) 🧪
 # ============================================================================
+def normalize_sandbox_buffer(buffer_lines: list) -> str:
+    """Auto-normalizes pasted code blocks and removes accidental leading indentation."""
+    lines = list(buffer_lines)
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        return ""
+
+    non_empty = [l for l in lines if l.strip() and not l.strip().startswith("#")]
+    if non_empty:
+        first_indent = len(non_empty[0]) - len(non_empty[0].lstrip())
+        if len(non_empty) > 1:
+            second_indent = len(non_empty[1]) - len(non_empty[1].lstrip())
+            if first_indent > 0 and second_indent > first_indent:
+                diff = second_indent - first_indent
+                idx = lines.index(non_empty[0])
+                lines[idx] = (" " * diff) + lines[idx]
+
+    return textwrap.dedent("\n".join(lines))
+
+
 def enter_den_sandbox(interp: Interpreter):
     t = get_t()
     print(f"\n{t['primary']}╔════════════════════════════════════════════════════════╗{RESET}")
@@ -352,10 +377,12 @@ def enter_den_sandbox(interp: Interpreter):
                 try:
                     follow = input(f"{t['primary']}den ❯\033[0m ").strip().lower()
                     if follow == "run":
-                        code = "\n".join(buffer)
+                        code = normalize_sandbox_buffer(buffer)
                         if code.strip():
                             print(f"{t['accent']}⚡ Executing...{RESET}")
                             res = run_foxvc_code(code, filename="<sandbox>", interp=interp)
+                            if res.get("emitted") is not None:
+                                print(f"--> Emitted: {res['emitted']}")
                             if not res["success"]:
                                 print(f"{t['error']}{res['error']}{RESET}")
                         else:
@@ -380,8 +407,10 @@ def enter_den_sandbox(interp: Interpreter):
             # Ctrl+D executes buffer but KEEPS YOU in the sandbox!
             if buffer:
                 print(f"\n{t['accent']}⚡ [Ctrl+D] Executing Sandbox Buffer...{RESET}")
-                code = "\n".join(buffer)
+                code = normalize_sandbox_buffer(buffer)
                 res = run_foxvc_code(code, filename="<sandbox>", interp=interp)
+                if res.get("emitted") is not None:
+                    print(f"{t['success']}--> Emitted: {res['emitted']}{RESET}")
                 if not res["success"]:
                     print(f"{t['error']}{res['error']}{RESET}")
                 buffer = []
@@ -504,6 +533,8 @@ def start_outer_cli():
 
                 # 4. Direct statement evaluation
                 res = run_foxvc_code(raw, filename="<cli>", interp=interp)
+                if res.get("emitted") is not None:
+                    print(f"{t['success']}--> Emitted: {res['emitted']}{RESET}")
                 if not res["success"]:
                     print(f"{t['error']}{res['error']}{RESET}")
 
@@ -537,6 +568,16 @@ def main():
     if cmd == "check":
         target = args[1] if len(args) > 1 else "."
         sys.exit(run_foxvc_diagnostic(target))
+
+    if cmd == "compile":
+        if len(args) < 2:
+            print("Error: Expected file path. Usage: foxvc compile <file.fox>", file=sys.stderr)
+            sys.exit(1)
+        src = args[1]
+        from engine.c_vm import FoxCVM
+        out = FoxCVM().compile_fox_file(src)
+        print(f"⚡ Successfully compiled '{src}' -> '{out}' (AOT Bytecode)")
+        sys.exit(0)
 
     if cmd == "run":
         if len(args) < 2:

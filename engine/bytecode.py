@@ -50,6 +50,10 @@ class Op(Enum):
     GET_TIME      = auto()   # (dest_reg,)
     FUSE_MODULE   = auto()   # (module_name,)
     HALT          = auto()   # ()
+    SIN           = auto()   # (dest_reg, src_reg)
+    COS           = auto()   # (dest_reg, src_reg)
+    SQRT          = auto()   # (dest_reg, src_reg)
+    RND           = auto()   # (dest_reg,)
 
 class FunctionBlock:
     def __init__(self, name: str, params: List[str], instructions: List[Tuple]):
@@ -97,6 +101,7 @@ class BytecodeCompiler:
 
     def compile(self, ast_node) -> Tuple[List[Tuple], Dict[str, FunctionBlock]]:
         self.instructions = []
+        self.line_map = {}
         self.functions = {}
         self.next_reg = 0
         self.current_func = None
@@ -109,7 +114,7 @@ class BytecodeCompiler:
         for n in nodes:
             self.compile_node(n)
         self.emit_op(Op.HALT)
-        return self.instructions, self.functions
+        return self.instructions, self.functions, self.line_map
 
     def compile_node(self, node) -> int:
         if node is None:
@@ -196,8 +201,14 @@ class BytecodeCompiler:
         # 6. FUNCTION & MOLD CALLS: CallExpression
         if t == "CallExpression":
             fn_name = _extract_name(node.function)
-            arg_regs = [self.compile_node(arg) for arg in node.arguments]
             dest_reg = self.alloc_reg()
+
+            # Dedicated Native Timer Hook
+            if fn_name == "time":
+                self.emit_op(Op.GET_TIME, dest_reg)
+                return dest_reg
+
+            arg_regs = [self.compile_node(arg) for arg in node.arguments]
             self.emit_op(Op.CALL, dest_reg, fn_name, arg_regs)
             return dest_reg
 
@@ -731,3 +742,78 @@ class FoxVM:
             self.ip += 1
 
         return last_emitted
+
+
+    def compile_act_def(self, node):
+        skip_jump = self.emit_op(Op.JUMP, 0)
+        func_start_ip = len(self.instructions)
+        params = getattr(node, "params", [])
+        self.functions[node.name] = {
+            "addr": func_start_ip,
+            "params": params
+        }
+        old_locals = self.local_vars.copy()
+        self.local_vars = {p: i for i, p in enumerate(params)}
+        
+        body = getattr(node, "body", [])
+        if not isinstance(body, list):
+            body = [body]
+        for stmt in body:
+            self.compile_node(stmt)
+            
+        nil_reg = self.alloc_reg()
+        self.emit_op(Op.LOAD_CONST, nil_reg, self.add_const(0.0))
+        self.emit_op(Op.RETURN, nil_reg)
+        self.local_vars = old_locals
+        self.patch_op(skip_jump, len(self.instructions))
+        return None
+
+    def compile_call(self, node):
+        callee = getattr(node, "callee", getattr(node, "name", None))
+        args = getattr(node, "args", [])
+        arg_regs = [self.compile_node(a) for a in args]
+        res_reg = self.alloc_reg()
+        
+        # Generic FoxVC Primitives (No hardcoded game functions)
+        if callee == "bind":
+            # bind("symbol_name", arg1, arg2...)
+            fn_name_node = args[0]
+            fn_name = getattr(fn_name_node, "value", "unknown")
+            str_idx = self.add_string(str(fn_name))
+            arg_regs = [self.compile_node(a) for a in args[1:]]
+            res_reg = self.alloc_reg()
+            self.emit_op(Op.BIND_CALL, str_idx, len(arg_regs), res_reg, *arg_regs)
+            return res_reg
+        elif callee == "pack":
+            # pack(size)
+            cap_reg = self.compile_node(args[0])
+            res_reg = self.alloc_reg()
+            self.emit_op(Op.PACK_NEW, cap_reg, res_reg)
+            return res_reg
+        elif callee == "pack_get":
+            # pack_get(pack_id, index)
+            p_reg = self.compile_node(args[0])
+            i_reg = self.compile_node(args[1])
+            res_reg = self.alloc_reg()
+            self.emit_op(Op.PACK_GET, p_reg, i_reg, res_reg)
+            return res_reg
+        elif callee == "pack_set":
+            # pack_set(pack_id, index, value)
+            p_reg = self.compile_node(args[0])
+            i_reg = self.compile_node(args[1])
+            v_reg = self.compile_node(args[2])
+            self.emit_op(Op.PACK_SET, p_reg, i_reg, v_reg)
+            return v_reg
+
+        if callee in self.functions:
+            f_meta = self.functions[callee]
+            self.emit_op(Op.CALL, f_meta["addr"], len(arg_regs), res_reg)
+        else:
+            # Fallback or built-in handling
+            pass
+        return res_reg
+
+    def add_string(self, s):
+        if s not in self.str_constants:
+            self.str_constants.append(s)
+        return self.str_constants.index(s)
