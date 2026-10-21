@@ -64,7 +64,6 @@ class TokenType(Enum):
     ASK = auto()
     GUARD = auto()
     TRAP = auto()
-    RECOVER = auto()
     FUSE = auto()
     LOCK = auto()
     SHIFT = auto()
@@ -112,7 +111,6 @@ KEYWORDS = {
     "ask": TokenType.ASK,
     "guard": TokenType.GUARD,
     "trap": TokenType.TRAP,
-    "recover": TokenType.RECOVER,
     "fuse": TokenType.FUSE,
     "lock": TokenType.LOCK,
     "shift": TokenType.SHIFT,
