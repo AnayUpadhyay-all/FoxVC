@@ -1,0 +1,29 @@
+# FoxVC Embedded SQLite Database Demo
+
+say "=== FoxVC Embedded Database Demo ==="
+
+# 1. Connect to an in-memory SQLite database
+db = dbOpen(":memory:")
+say "Database initialized: " + db.handle
+
+# 2. Create tables
+dbExecute(db, "CREATE TABLE products (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price REAL)")
+
+# 3. Insert records
+dbExecute(db, "INSERT INTO products (name, price) VALUES ('High-Speed Compiler', 199.99)")
+dbExecute(db, "INSERT INTO products (name, price) VALUES ('Raylib Visual Pack', 49.50)")
+dbExecute(db, "INSERT INTO products (name, price) VALUES ('FoxVC Pro Edition', 299.00)")
+
+# 4. Query records
+products = dbQuery(db, "SELECT * FROM products ORDER BY price DESC")
+say "Total products stored: " + len(products)
+
+p1 = products[0]
+say "Top product: " + p1.name + " ($" + p1.price + ")"
+
+p2 = products[1]
+say "Second product: " + p2.name + " ($" + p2.price + ")"
+
+# 5. Clean up
+dbClose(db)
+say "Database connection closed cleanly."

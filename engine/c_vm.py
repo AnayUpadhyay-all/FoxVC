@@ -248,6 +248,8 @@ class FoxCVM:
                 flat_inst.append(inst[1])
             elif op == Op.CALL:
                 # [19, func_id, arg_count, dst, arg0, ...]
+                if isinstance(inst[2], str) and inst[2] not in inst_to_flat:
+                    raise NotImplementedError(f"C VM cannot execute external function '{inst[2]}'")
                 func_id = inst_to_flat.get(inst[2], inst[2]) if isinstance(inst[2], int) else get_str_idx(inst[2])
                 args = inst[3] if len(inst) > 3 else []
                 flat_inst.extend([func_id, len(args), inst[1]])

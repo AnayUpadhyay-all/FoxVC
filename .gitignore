@@ -13,6 +13,11 @@ engine_audit.py
 *.log
 .ngrok_domain
 # OS & temp artifacts
+os
+fix_time_hook.py
+patch_time.py
+gemini_local_bridge.py
+start_dev.sh
 prepare_release.sh
 __pycache__/
 *.py[cod]

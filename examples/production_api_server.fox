@@ -1,0 +1,65 @@
+# ==============================================================================
+# FoxVC Production REST API & SQLite Full-Stack Demo
+# Demonstrating:
+#   1. SQLite Database CRUD
+#   2. HTTP Web Server & Route Dispatcher
+#   3. Outbound HTTP Client
+#   4. Cryptographic Hashing & UUID Generation
+#   5. Environment & System Introspection
+# ==============================================================================
+
+say "=================================================="
+say "   FoxVC Full-Stack Production Engine Running     "
+say "=================================================="
+
+# 1. System Info
+say "[System] Platform: " + platform() + " | CPU Cores: " + cpuCount()
+
+# 2. Database Setup
+db = dbOpen(":memory:")
+dbExecute(db, "CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT, pass_hash TEXT, created_at REAL)")
+say "[Database] SQLite in-memory database initialized."
+
+# Seed an admin user
+admin_id = uuid()
+admin_pass = hashSha256("AdminSecret2026")
+dbExecute(db, "INSERT INTO users (id, username, pass_hash, created_at) VALUES (?, ?, ?, ?)", [admin_id, "admin", admin_pass, time()])
+say "[Database] Seeded admin user (" + admin_id + ")"
+
+# 3. Create HTTP Server
+srv = httpServer(0, "127.0.0.1")
+
+# Route: GET /health
+act handle_health(req)
+    emit httpResponse(pack { status: "healthy", platform: platform(), cpus: cpuCount(), timestamp: time() })
+
+httpRoute(srv, "GET", "/health", handle_health)
+
+# Route: GET /api/users
+act handle_get_users(req)
+    users = dbQuery(db, "SELECT id, username, created_at FROM users")
+    emit httpResponse(users)
+
+httpRoute(srv, "GET", "/api/users", handle_get_users)
+
+# Start Server
+httpStart(srv)
+port = srv.port
+say "[Server] HTTP Server listening at http://127.0.0.1:" + port
+
+# 4. Outbound Client Tests
+say "[Client] Calling GET /health..."
+health_res = httpGet("http://127.0.0.1:" + port + "/health")
+say "[Client] Status: " + health_res.status + " | Body: " + health_res.body
+
+say "[Client] Calling GET /api/users..."
+users_res = httpGet("http://127.0.0.1:" + port + "/api/users")
+say "[Client] Status: " + users_res.status + " | Body: " + users_res.body
+
+# 5. Clean up
+httpStop(srv)
+dbClose(db)
+say "[Server] Server stopped and database closed successfully."
+say "=================================================="
+say "   FoxVC Full-Stack Verification Complete!        "
+say "=================================================="

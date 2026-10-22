@@ -1,0 +1,15 @@
+# FoxVC Networking & REST API Demo (v0.5.2)
+
+say "=== FoxVC Outbound Networking Demo ==="
+
+# 1. URL Encoding
+params = pack { search: "foxvc language", limit: 10 }
+query = urlEncode(params)
+say "Encoded query string: " + query
+
+# 2. Mocking / Outbound Call
+say "Testing URL decoding..."
+decoded = urlDecode("hello+world%21")
+say "Decoded string: " + decoded
+
+say "Network module ready for REST APIs & Webhooks!"

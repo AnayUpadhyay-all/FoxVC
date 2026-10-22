@@ -9,6 +9,35 @@ from dataclasses import dataclass, field
 FOXVC_LANGUAGE_VERSION = "0.5.1"
 FOXVC_RUNTIME_VERSION = "0.5.0"
 
+class FoxPack:
+    def __init__(self, data: Optional[Dict[str, Any]] = None):
+        self._data: Dict[str, Any] = dict(data) if data is not None else {}
+
+    def __getitem__(self, key):
+        return self._data[key]
+
+    def __setitem__(self, key, value):
+        self._data[key] = value
+
+    def __contains__(self, key):
+        return key in self._data
+
+    def get(self, key, default=None):
+        return self._data.get(key, default)
+
+    def keys(self):
+        return list(self._data.keys())
+
+    def values(self):
+        return list(self._data.values())
+
+    def items(self):
+        return list(self._data.items())
+
+    def __repr__(self):
+        return f"pack {self._data}"
+
+
 class SourceFormat:
     STANDARD = "fox"
     STRUCTURE = "fweb"

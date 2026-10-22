@@ -31,18 +31,7 @@ class SkipSignal(Exception):
     pass
 
 
-class FoxPack:
-    def __init__(self, data: Dict[str, Any]):
-        self._data = data
-
-    def __getitem__(self, key):
-        return self._data[key]
-
-    def __setitem__(self, key, value):
-        self._data[key] = value
-
-    def __repr__(self):
-        return f"pack {self._data}"
+from .runtime import FoxPack
 
 
 def get_foxvc_type(val: Any) -> str:
@@ -364,6 +353,26 @@ class Interpreter:
 
         return self._evaluate(stmt)
 
+    def _invoke_act(self, fn, evaluated_args, line=0, col=0):
+        if len(evaluated_args) != len(fn.params):
+            raise RuntimeError(f"Act '{fn.name}' expects {len(fn.params)} arguments, got {len(evaluated_args)}", line, col, self.active_file)
+
+        prev_env = self.current_env
+        call_env = Environment(parent=self.global_env)
+        for param, val in zip(fn.params, evaluated_args):
+            call_env.define(param, val)
+
+        self.current_env = call_env
+        return_val = None
+        try:
+            for s in fn.body:
+                self._execute_statement(s)
+        except EmitSignal as sig:
+            return_val = sig.value
+        finally:
+            self.current_env = prev_env
+        return return_val
+
     def _evaluate(self, node: Any) -> Any:
         if node is None:
             return None
@@ -425,6 +434,9 @@ class Interpreter:
             name = node.name
             if name in self.variables:
                 return self.variables[name]
+            if name in self.functions:
+                fn = self.functions[name]
+                return lambda *args: self._invoke_act(fn, list(args), getattr(node, "line", 0), getattr(node, "column", 0))
             raise RuntimeError(f"Undefined variable '{name}'", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
 
         if node_type == "CallExpression":
@@ -433,24 +445,7 @@ class Interpreter:
 
             if fn_name in self.functions:
                 fn = self.functions[fn_name]
-                if len(evaluated_args) != len(fn.params):
-                    raise RuntimeError(f"Act '{fn_name}' expects {len(fn.params)} arguments, got {len(evaluated_args)}", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
-
-                prev_env = self.current_env
-                call_env = Environment(parent=self.global_env)
-                for param, val in zip(fn.params, evaluated_args):
-                    call_env.define(param, val)
-
-                self.current_env = call_env
-                return_val = None
-                try:
-                    for s in fn.body:
-                        self._execute_statement(s)
-                except EmitSignal as sig:
-                    return_val = sig.value
-                finally:
-                    self.current_env = prev_env
-                return return_val
+                return self._invoke_act(fn, evaluated_args, getattr(node, "line", 0), getattr(node, "column", 0))
 
             if fn_name in self.molds:
                 mold = self.molds[fn_name]
@@ -465,6 +460,11 @@ class Interpreter:
                     return native_fn(*evaluated_args)
                 except Exception as e:
                     raise RuntimeError(f"Shelf call '{fn_name}' failed: {e}", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
+
+            if hasattr(self.current_env, "get"):
+                env_fn = self.current_env.get(fn_name)
+                if env_fn is not None and callable(env_fn):
+                    return env_fn(*evaluated_args)
 
             raise RuntimeError(f"Undefined act or shelf function '{fn_name}'", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
 
