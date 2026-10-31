@@ -926,10 +926,137 @@ import math
 import time
 import json
 import random
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
-def get_standard_shelf() -> Dict[str, Any]:
+class SecurityPolicy:
+    """Explicit security execution boundary for FoxVC programs."""
+    def __init__(self, sandboxed: bool = False, allowed_dir: Optional[str] = None):
+        self.sandboxed = sandboxed
+        self.allowed_dir = os.path.abspath(allowed_dir) if allowed_dir else None
+        self.isolated_env: Dict[str, str] = {}
+
+    def resolve_path(self, path: Any) -> Optional[str]:
+        path_str = str(path)
+        if not self.sandboxed:
+            return path_str
+        if not self.allowed_dir:
+            return None
+        if os.path.isabs(path_str):
+            target = os.path.abspath(path_str)
+        else:
+            target = os.path.abspath(os.path.join(self.allowed_dir, path_str))
+        try:
+            if os.path.commonpath([target, self.allowed_dir]) == self.allowed_dir:
+                return target
+        except Exception:
+            pass
+        return None
+
+
+def get_standard_shelf(policy: Optional[SecurityPolicy] = None, sandboxed: bool = False, allowed_dir: Optional[str] = None) -> Dict[str, Any]:
+    if policy is None:
+        policy = SecurityPolicy(sandboxed=sandboxed, allowed_dir=allowed_dir)
+
+    def _read_file(path):
+        target = policy.resolve_path(path)
+        if target is None:
+            return ""
+        return fox_read_file(target)
+
+    def _write_file(path, content):
+        target = policy.resolve_path(path)
+        if target is None:
+            return 0
+        return fox_write_file(target, content)
+
+    def _append_file(path, content):
+        target = policy.resolve_path(path)
+        if target is None:
+            return 0
+        return fox_append_file(target, content)
+
+    def _file_exists(path):
+        target = policy.resolve_path(path)
+        if target is None:
+            return 0
+        return fox_file_exists(target)
+
+    def _remove_file(path):
+        target = policy.resolve_path(path)
+        if target is None:
+            return 0
+        return fox_remove_file(target)
+
+    def _list_dir(path="."):
+        target = policy.resolve_path(path)
+        if target is None:
+            return []
+        return fox_list_dir(target)
+
+    def _make_dir(path):
+        target = policy.resolve_path(path)
+        if target is None:
+            return 0
+        return fox_make_dir(target)
+
+    def _remove_dir(path):
+        target = policy.resolve_path(path)
+        if target is None or (policy.sandboxed and target == policy.allowed_dir):
+            return 0
+        return fox_remove_dir(target)
+
+    def _exec_cmd(command, timeout=30.0):
+        if policy.sandboxed:
+            return FoxPack({
+                "ok": 0,
+                "exit_code": -1,
+                "stdout": "",
+                "stderr": "PermissionDenied: 'execCmd' is disabled in sandboxed/untrusted context"
+            })
+        return fox_exec_cmd(command, timeout=timeout)
+
+    def _get_env(key, default=""):
+        if policy.sandboxed:
+            return policy.isolated_env.get(str(key), str(default))
+        return fox_get_env(key, default)
+
+    def _set_env(key, value):
+        if policy.sandboxed:
+            policy.isolated_env[str(key)] = str(value)
+            return 1
+        return fox_set_env(key, value)
+
+    def _list_env():
+        if policy.sandboxed:
+            return FoxPack(dict(policy.isolated_env))
+        return fox_list_env()
+
+    def _db_open(path=":memory:"):
+        path_str = str(path)
+        if policy.sandboxed and path_str != ":memory:":
+            target = policy.resolve_path(path_str)
+            if target is None:
+                return FoxPack({
+                    "handle": "",
+                    "path": path_str,
+                    "ok": 0,
+                    "error": "PermissionDenied: Database path outside sandbox"
+                })
+            path_str = target
+        return fox_db_open(path_str)
+
+    def _http_server(port=8080, host="0.0.0.0"):
+        if policy.sandboxed:
+            return FoxPack({
+                "id": "",
+                "host": str(host),
+                "port": int(port),
+                "ok": 0,
+                "error": "PermissionDenied: HTTP server cannot be spawned in sandboxed context"
+            })
+        return fox_http_server(port, host)
+
     return {
         # Collection Primitives
         "pack": fox_pack,
@@ -958,12 +1085,12 @@ def get_standard_shelf() -> Dict[str, Any]:
         "mouseClicked": fox_mouse_clicked,
 
         # File System I/O
-        "readFile": fox_read_file,
-        "writeFile": fox_write_file,
-        "appendFile": fox_append_file,
-        "fileExists": fox_file_exists,
-        "removeFile": fox_remove_file,
-        "listDir": fox_list_dir,
+        "readFile": _read_file,
+        "writeFile": _write_file,
+        "appendFile": _append_file,
+        "fileExists": _file_exists,
+        "removeFile": _remove_file,
+        "listDir": _list_dir,
 
         # JSON Data Serialization
         "jsonParse": fox_json_parse,
@@ -1016,13 +1143,13 @@ def get_standard_shelf() -> Dict[str, Any]:
         "urlDecode": fox_url_decode,
 
         # Database Engine (Embedded SQLite)
-        "dbOpen": fox_db_open,
+        "dbOpen": _db_open,
         "dbExecute": fox_db_execute,
         "dbQuery": fox_db_query,
         "dbClose": fox_db_close,
 
         # Production HTTP Server & REST API Framework
-        "httpServer": fox_http_server,
+        "httpServer": _http_server,
         "httpRoute": fox_http_route,
         "httpStart": fox_http_start,
         "httpStop": fox_http_stop,
@@ -1042,14 +1169,14 @@ def get_standard_shelf() -> Dict[str, Any]:
         "hexDecode": fox_hex_decode,
 
         # System, Environment & Process Execution
-        "getEnv": fox_get_env,
-        "setEnv": fox_set_env,
-        "listEnv": fox_list_env,
-        "execCmd": fox_exec_cmd,
+        "getEnv": _get_env,
+        "setEnv": _set_env,
+        "listEnv": _list_env,
+        "execCmd": _exec_cmd,
         "platform": fox_platform,
         "cpuCount": fox_cpu_count,
-        "makeDir": fox_make_dir,
-        "removeDir": fox_remove_dir,
+        "makeDir": _make_dir,
+        "removeDir": _remove_dir,
         "absPath": fox_abs_path,
         "fileSize": fox_file_size,
 

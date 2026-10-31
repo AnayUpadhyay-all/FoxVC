@@ -216,7 +216,9 @@ class Lexer:
                             break
                         if line_text[idx] == '\\' and idx + 1 < line_len:
                             idx += 1
-                            str_chars.append(line_text[idx])
+                            esc = line_text[idx]
+                            escape_map = {'n': '\n', 't': '\t', 'r': '\r', '\\': '\\', '"': '"', "'": "'"}
+                            str_chars.append(escape_map.get(esc, esc))
                         else:
                             str_chars.append(line_text[idx])
                         idx += 1
@@ -253,7 +255,7 @@ class Lexer:
                     self.tokens.append(Token(tok_type, ident, line_num, start_col))
                     continue
 
-                idx += 1
+                raise LexerError(f"Unexpected character '{ch}'", line_num, col)
 
             self.tokens.append(Token(TokenType.NEWLINE, "\n", line_num, len(line_text)))
 

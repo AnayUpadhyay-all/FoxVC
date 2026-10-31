@@ -1,66 +1,160 @@
+"""
+FoxVC Web Studio Server
+Provides secure local mobile and browser-based coding environment with execution isolation.
+"""
+
 import http.server
 import socketserver
 import json
 import os
 import sys
+import mimetypes
+import tempfile
+from typing import Optional
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-from engine.runner import run_foxvc, run_foxvc_project
+from engine.runner import run_foxvc
 
 PORT = 8080
+HOST = "127.0.0.1"
 
-class FoxVCWebHandler(http.server.SimpleHTTPRequestHandler):
-    def end_headers(self):
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        super().end_headers()
+ALLOWED_ORIGINS = {
+    f"http://127.0.0.1:{PORT}",
+    f"http://localhost:{PORT}",
+    f"http://[::1]:{PORT}",
+}
+
+SANDBOX_WORKSPACE = os.path.join(tempfile.gettempdir(), "foxvc_web_sandbox")
+os.makedirs(SANDBOX_WORKSPACE, exist_ok=True)
+
+
+class FoxVCWebHandler(http.server.BaseHTTPRequestHandler):
+    server_version = "FoxVCWebStudio/1.0"
+
+    def _get_allowed_origin(self) -> Optional[str]:
+        origin = self.headers.get("Origin")
+        if origin and origin in ALLOWED_ORIGINS:
+            return origin
+        return None
+
+    def _send_cors_headers(self):
+        allowed_origin = self._get_allowed_origin()
+        if allowed_origin:
+            self.send_header("Access-Control-Allow-Origin", allowed_origin)
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type, X-FoxVC-Client")
+            self.send_header("Vary", "Origin")
 
     def do_OPTIONS(self):
         self.send_response(200)
+        self._send_cors_headers()
         self.end_headers()
 
     def do_POST(self):
         if self.path == "/api/run":
-            content_len = int(self.headers.get("Content-Length", 0))
-            body = self.rfile.read(content_len).decode("utf-8")
+            origin = self.headers.get("Origin")
+            if origin and origin not in ALLOWED_ORIGINS:
+                self.send_response(403)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"success": false, "error": "Forbidden: Untrusted Origin", "output": ""}')
+                return
+
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                content_len = 0
+
+            if content_len > 512 * 1024:  # 512 KB payload limit
+                self.send_response(413)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"success": false, "error": "Payload Too Large: Script exceeds 512KB limit", "output": ""}')
+                return
+
+            body = self.rfile.read(content_len).decode("utf-8", errors="replace")
             try:
                 data = json.loads(body)
                 code = data.get("code", "")
-                result = run_foxvc(code)
+                result = run_foxvc(
+                    code,
+                    engine_mode="interp",
+                    as_result=True,
+                    sandboxed=True,
+                    allowed_dir=SANDBOX_WORKSPACE,
+                    timeout=5.0
+                )
                 resp = {
                     "success": result.success,
                     "output": result.output,
                     "error": result.error,
-                    "web_output": getattr(result, "web_output", "")
+                    "value": str(result.value) if result.value is not None else None
                 }
             except Exception as e:
-                resp = {"success": False, "error": str(e), "output": ""}
-            
+                resp = {"success": False, "error": str(e), "output": "", "value": None}
+
+            resp_bytes = json.dumps(resp).encode("utf-8")
             self.send_response(200)
-            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(resp_bytes)))
+            self._send_cors_headers()
             self.end_headers()
-            self.wfile.write(json.dumps(resp).encode("utf-8"))
+            self.wfile.write(resp_bytes)
             return
-        self.send_error(404)
+
+        self.send_error(404, "Endpoint not found")
 
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
-            self.path = "/studio/mobile_studio.html"
-        super().do_GET()
+        path = self.path.split("?")[0].split("#")[0]
+        file_map = {
+            "/": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
+            "/index.html": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
+            "/studio/mobile_studio.html": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
+            "/studio/web/visual_builder.js": os.path.join(REPO_ROOT, "studio", "web", "visual_builder.js"),
+        }
 
-def run_server(port=PORT):
-    os.chdir(REPO_ROOT)
+        target_file = file_map.get(path)
+
+        if not target_file and path.startswith("/assets/"):
+            rel_asset = os.path.normpath(path[len("/assets/"):])
+            if not rel_asset.startswith("..") and not os.path.isabs(rel_asset):
+                cand = os.path.join(REPO_ROOT, "assets", rel_asset)
+                if os.path.isfile(cand):
+                    target_file = cand
+
+        if target_file and os.path.isfile(target_file):
+            ctype, _ = mimetypes.guess_type(target_file)
+            ctype = ctype or "application/octet-stream"
+            try:
+                with open(target_file, "rb") as f:
+                    content = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Content-Length", str(len(content)))
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self._send_cors_headers()
+                self.end_headers()
+                self.wfile.write(content)
+                return
+            except Exception:
+                self.send_error(500, "Failed to read static file")
+                return
+
+        self.send_error(404, "File not found")
+
+
+def run_server(host=HOST, port=PORT):
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", port), FoxVCWebHandler) as httpd:
-        print(f"FoxVC Web Studio serving on port {port}...")
+    with socketserver.TCPServer((host, port), FoxVCWebHandler) as httpd:
+        print(f"FoxVC Web Studio securely serving on http://{host}:{port} (Loopback only)...")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
             httpd.server_close()
+
 
 if __name__ == "__main__":
     run_server()

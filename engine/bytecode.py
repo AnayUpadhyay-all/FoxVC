@@ -54,6 +54,10 @@ class Op(Enum):
     COS           = auto()   # (dest_reg, src_reg)
     SQRT          = auto()   # (dest_reg, src_reg)
     RND           = auto()   # (dest_reg,)
+    PACK_NEW      = auto()   # (cap_reg, dest_reg)
+    PACK_GET      = auto()   # (dest_reg, pack_reg, idx_reg)
+    PACK_SET      = auto()   # (pack_reg, idx_reg, val_reg)
+    BIND_CALL     = auto()   # (str_idx, argc, dest_reg, *arg_regs)
 
 class FunctionBlock:
     def __init__(self, name: str, params: List[str], instructions: List[Tuple]):
@@ -79,6 +83,9 @@ class BytecodeCompiler:
         self.next_reg = 0
         self.current_func: Optional[str] = None
         self.loop_stack: List[Dict[str, Any]] = []
+        self.line_map: Dict[int, int] = {}
+        self.str_constants: List[str] = []
+        self.num_constants: List[float] = []
 
     def alloc_reg(self) -> int:
         r = self.next_reg
@@ -99,19 +106,23 @@ class BytecodeCompiler:
         op = target[idx][0]
         target[idx] = (op, *args)
 
-    def compile(self, ast_node) -> Tuple[List[Tuple], Dict[str, FunctionBlock]]:
+    def compile(self, ast_node) -> Tuple[List[Tuple], Dict[str, FunctionBlock], Dict[int, int]]:
         self.instructions = []
         self.line_map = {}
         self.functions = {}
         self.next_reg = 0
         self.current_func = None
         self.loop_stack = []
+        self.str_constants = []
+        self.num_constants = []
 
         nodes = getattr(ast_node, "statements", getattr(ast_node, "body", ast_node))
         if not isinstance(nodes, list):
             nodes = [nodes]
 
         for n in nodes:
+            if hasattr(n, "line") and n.line:
+                self.line_map[len(self.target_stream())] = n.line
             self.compile_node(n)
         self.emit_op(Op.HALT)
         return self.instructions, self.functions, self.line_map
@@ -506,17 +517,32 @@ class FoxVM:
         self.call_stack: List[CallFrame] = []
         self.trap_stack: List[Tuple] = []
         self.functions: Dict[str, FunctionBlock] = {}
+        self.line_map: Dict[int, int] = {}
+        self.output_buffer: List[str] = []
         self.ip = 0
+        from .shelf import get_standard_shelf
+        self.shelf = get_standard_shelf()
 
     def run(self, code_package: Any) -> Any:
         if isinstance(code_package, tuple):
-            code, self.functions = code_package
+            if len(code_package) >= 3:
+                code, self.functions, self.line_map = code_package[0], code_package[1], code_package[2]
+            elif len(code_package) == 2:
+                code, self.functions = code_package
+                self.line_map = {}
+            elif len(code_package) == 1:
+                code = code_package[0]
+                self.functions = {}
+                self.line_map = {}
         else:
-            code, self.functions = code_package, {}
+            code = code_package
+            self.functions = {}
+            self.line_map = {}
 
         self.ip = 0
         self.call_stack = []
         self.trap_stack = []
+        self.output_buffer = []
         regs = self.registers
         last_emitted = None
         active_code = code
@@ -588,10 +614,16 @@ class FoxVM:
 
                 elif op == Op.PRINT:
                     val = regs[inst[1]]
-                    if isinstance(val, bool):
-                        print("aye" if val else "nay")
+                    if val is True:
+                        out_str = "aye"
+                    elif val is False:
+                        out_str = "nay"
+                    elif val is None:
+                        out_str = "blank"
                     else:
-                        print(val)
+                        out_str = str(val)
+                    self.output_buffer.append(out_str)
+                    print(out_str)
 
                 elif op == Op.BUILD_LIST:
                     regs[inst[1]] = [regs[r] for r in inst[2]]
@@ -604,6 +636,30 @@ class FoxVM:
 
                 elif op == Op.SET_INDEX:
                     regs[inst[1]][regs[inst[2]]] = regs[inst[3]]
+
+                elif op == Op.PACK_NEW:
+                    cap = int(regs[inst[1]]) if isinstance(regs[inst[1]], (int, float)) else 0
+                    regs[inst[2]] = [0.0] * max(0, cap)
+
+                elif op == Op.PACK_GET:
+                    dest = inst[1]
+                    pack_obj = regs[inst[2]]
+                    idx = int(regs[inst[3]]) if isinstance(regs[inst[3]], (int, float)) else 0
+                    if isinstance(pack_obj, list) and 0 <= idx < len(pack_obj):
+                        regs[dest] = pack_obj[idx]
+                    else:
+                        regs[dest] = 0.0
+
+                elif op == Op.PACK_SET:
+                    pack_obj = regs[inst[1]]
+                    idx = int(regs[inst[2]]) if isinstance(regs[inst[2]], (int, float)) else 0
+                    val = regs[inst[3]]
+                    if isinstance(pack_obj, list) and 0 <= idx < len(pack_obj):
+                        pack_obj[idx] = val
+
+                elif op == Op.BIND_CALL:
+                    dest_reg = inst[3]
+                    regs[dest_reg] = 0.0
 
                 elif op == Op.GET_MEMBER:
                     obj = regs[inst[2]]
@@ -651,8 +707,18 @@ class FoxVM:
                         active_code = fn_block.instructions
                         self.ip = 0
                         continue
+                    elif fn_name in self.shelf:
+                        fn = self.shelf[fn_name]
+                        args = [regs[r] for r in arg_regs]
+                        regs[dest_reg] = fn(*args)
                     else:
-                        raise RuntimeError(f"Undefined function or mold '{fn_name}' in FoxVM")
+                        from .interpreter import Interpreter
+                        if fn_name in Interpreter.STANDARD_BUILTINS:
+                            fn = Interpreter.STANDARD_BUILTINS[fn_name]
+                            args = [regs[r] for r in arg_regs]
+                            regs[dest_reg] = fn(*args)
+                        else:
+                            raise RuntimeError(f"Undefined function or mold '{fn_name}' in FoxVM")
 
                 elif op == Op.RETURN:
                     ret_val = regs[inst[1]]
@@ -709,13 +775,16 @@ class FoxVM:
                             mod_src = mf.read()
                         mod_ast = Parser(Lexer(mod_src).tokenize(), source=mod_src).parse()
                         sub_comp = BytecodeCompiler()
-                        sub_code, sub_funcs = sub_comp.compile(mod_ast)
+                        sub_pkg = sub_comp.compile(mod_ast)
+                        sub_code = sub_pkg[0]
+                        sub_funcs = sub_pkg[1]
+                        sub_lines = sub_pkg[2] if len(sub_pkg) > 2 else {}
                         self.functions.update(sub_funcs)
                         sub_vm = FoxVM()
                         sub_vm.functions = self.functions
                         sub_vm.globals = self.globals
                         sub_vm.molds = self.molds
-                        sub_vm.run((sub_code, self.functions))
+                        sub_vm.run((sub_code, self.functions, sub_lines))
 
                 elif op == Op.EMIT:
                     last_emitted = regs[inst[1]]
@@ -743,77 +812,3 @@ class FoxVM:
 
         return last_emitted
 
-
-    def compile_act_def(self, node):
-        skip_jump = self.emit_op(Op.JUMP, 0)
-        func_start_ip = len(self.instructions)
-        params = getattr(node, "params", [])
-        self.functions[node.name] = {
-            "addr": func_start_ip,
-            "params": params
-        }
-        old_locals = self.local_vars.copy()
-        self.local_vars = {p: i for i, p in enumerate(params)}
-        
-        body = getattr(node, "body", [])
-        if not isinstance(body, list):
-            body = [body]
-        for stmt in body:
-            self.compile_node(stmt)
-            
-        nil_reg = self.alloc_reg()
-        self.emit_op(Op.LOAD_CONST, nil_reg, self.add_const(0.0))
-        self.emit_op(Op.RETURN, nil_reg)
-        self.local_vars = old_locals
-        self.patch_op(skip_jump, len(self.instructions))
-        return None
-
-    def compile_call(self, node):
-        callee = getattr(node, "callee", getattr(node, "name", None))
-        args = getattr(node, "args", [])
-        arg_regs = [self.compile_node(a) for a in args]
-        res_reg = self.alloc_reg()
-        
-        # Generic FoxVC Primitives (No hardcoded game functions)
-        if callee == "bind":
-            # bind("symbol_name", arg1, arg2...)
-            fn_name_node = args[0]
-            fn_name = getattr(fn_name_node, "value", "unknown")
-            str_idx = self.add_string(str(fn_name))
-            arg_regs = [self.compile_node(a) for a in args[1:]]
-            res_reg = self.alloc_reg()
-            self.emit_op(Op.BIND_CALL, str_idx, len(arg_regs), res_reg, *arg_regs)
-            return res_reg
-        elif callee == "pack":
-            # pack(size)
-            cap_reg = self.compile_node(args[0])
-            res_reg = self.alloc_reg()
-            self.emit_op(Op.PACK_NEW, cap_reg, res_reg)
-            return res_reg
-        elif callee == "pack_get":
-            # pack_get(pack_id, index)
-            p_reg = self.compile_node(args[0])
-            i_reg = self.compile_node(args[1])
-            res_reg = self.alloc_reg()
-            self.emit_op(Op.PACK_GET, p_reg, i_reg, res_reg)
-            return res_reg
-        elif callee == "pack_set":
-            # pack_set(pack_id, index, value)
-            p_reg = self.compile_node(args[0])
-            i_reg = self.compile_node(args[1])
-            v_reg = self.compile_node(args[2])
-            self.emit_op(Op.PACK_SET, p_reg, i_reg, v_reg)
-            return v_reg
-
-        if callee in self.functions:
-            f_meta = self.functions[callee]
-            self.emit_op(Op.CALL, f_meta["addr"], len(arg_regs), res_reg)
-        else:
-            # Fallback or built-in handling
-            pass
-        return res_reg
-
-    def add_string(self, s):
-        if s not in self.str_constants:
-            self.str_constants.append(s)
-        return self.str_constants.index(s)

@@ -26,7 +26,7 @@ otherwise
 
 emit outer_flag + inner_flag
 """
-res1 = run_foxvc(code1, engine_mode="vm")
+res1 = run_foxvc(code1, engine_mode="vm", as_result=False)
 assert res1 == 3, f"Test 1 failed! Got {res1}"
 print("✅ Test 1: Double-nested trap isolation passed (Result: 3)")
 passed += 1
@@ -41,7 +41,7 @@ act countdown(n)
 
 emit countdown(40)
 """
-res2 = run_foxvc(code2, engine_mode="vm")
+res2 = run_foxvc(code2, engine_mode="vm", as_result=False)
 assert res2 == 40, f"Test 2 failed! Got {res2}"
 print("✅ Test 2: Deep CallFrame recursion (depth 40) passed")
 passed += 1
@@ -56,7 +56,7 @@ spin nay
     count = count + 10
 emit count
 """
-res3 = run_foxvc(code3, engine_mode="vm")
+res3 = run_foxvc(code3, engine_mode="vm", as_result=False)
 assert res3 == 0, f"Test 3 failed! Got {res3}"
 print("✅ Test 3: Zero-iteration loops & empty list passed")
 passed += 1
@@ -75,7 +75,7 @@ p.w = Weapon()
 p.w.damage = 75
 emit p.w.damage
 """
-res4 = run_foxvc(code4, engine_mode="vm")
+res4 = run_foxvc(code4, engine_mode="vm", as_result=False)
 assert res4 == 75, f"Test 4 failed! Got {res4}"
 print("✅ Test 4: Nested Mold mutations passed (Result: 75)")
 passed += 1
@@ -89,7 +89,7 @@ cycle i 10
     acc = acc + 1
 emit acc
 """
-res5 = run_foxvc(code5, engine_mode="vm")
+res5 = run_foxvc(code5, engine_mode="vm", as_result=False)
 assert res5 == 5, f"Test 5 failed! Got {res5}"
 print("✅ Test 5: Conditional loop halt passed (Result: 5)")
 passed += 1

@@ -80,9 +80,63 @@ class FoxCVM:
         ]
         self.lib.run_bytecode.restype = ctypes.c_double
 
-    @staticmethod
-    def can_accelerate(instructions, functions) -> bool:
-        """Returns True if the bytecode payload is suitable for native C execution."""
+    SUPPORTED_OPS = {
+        Op.LOAD_CONST, Op.LOAD_VAR, Op.STORE_VAR,
+        Op.ADD, Op.SUB, Op.MUL, Op.DIV, Op.MOD,
+        Op.CMP_EQ, Op.CMP_NE, Op.CMP_LT, Op.CMP_GT, Op.CMP_LE, Op.CMP_GE,
+        Op.JUMP, Op.JUMP_IF_FALSE, Op.HALT, Op.GET_TIME,
+        Op.CALL, Op.RETURN, Op.PRINT, Op.EMIT,
+        Op.SIN, Op.COS, Op.SQRT, Op.RND,
+        Op.BUILD_LIST, Op.GET_INDEX, Op.SET_INDEX,
+        Op.PACK_NEW, Op.PACK_GET, Op.PACK_SET, Op.BIND_CALL
+    }
+
+    RAYLIB_NATIVE_PRIMITIVES = {
+        "win_open", "win_running", "frame_start", "frame_end",
+        "draw_rect", "draw_circle", "draw_line", "key_down",
+        "key_pressed", "mouse_x", "mouse_y", "mouse_down",
+        "mouse_pressed", "get_fps", "set_fps"
+    }
+
+    @classmethod
+    def can_accelerate(cls, instructions, functions=None) -> bool:
+        """
+        Genuine Native C VM Capability Detection.
+        Returns True ONLY if all instructions and calls in the payload are
+        strictly supported by the native C VM runtime (engine/foxvm.c).
+
+        Documented Capability Matrix:
+        - Numbers & Floats: Supported (double registers, 64-bit IEEE 754)
+        - Arithmetic & Comparisons: Supported (+, -, *, /, %, ==, !=, <, >, <=, >=)
+        - Jumps & Control Flow: Supported (JUMP, JUMP_IF_FALSE, HALT)
+        - Memory Arena & Lists: Supported (8MB linear arena, FoxPack double arrays)
+        - Raylib Hardware 2D: Supported (windowing, shapes, inputs, timing)
+        - NOT Supported by Native VM (must use Python VM or Tree-Walking Interpreter):
+          * Separate Act Function Blocks (functions dict - execute on FoxVM)
+          * Blueprints/Molds (Op.DEFINE_MOLD, Op.GET_MEMBER, Op.SET_MEMBER)
+          * Error Traps & Guards (Op.GUARD, Op.SETUP_TRAP, Op.POP_TRAP)
+          * User String Dictionaries (Op.BUILD_PACK)
+          * Module Imports (Op.FUSE_MODULE)
+          * Interactive CLI Input (Op.ASK_INPUT)
+          * Host Filesystem, SQLite, Cryptography & Networking Shelves
+        """
+        if not instructions or not isinstance(instructions, list):
+            return False
+
+        # If the compilation unit relies on separate act function blocks, C VM cannot run them
+        if functions and len(functions) > 0:
+            return False
+
+        for inst in instructions:
+            if not isinstance(inst, tuple) or len(inst) == 0:
+                return False
+            op = inst[0]
+            if op not in cls.SUPPORTED_OPS:
+                return False
+            if op == Op.CALL:
+                target = inst[2] if len(inst) > 2 else None
+                if isinstance(target, str) and target not in cls.RAYLIB_NATIVE_PRIMITIVES:
+                    return False
         return True
 
     def compile_payload(self, code_pkg):
@@ -136,7 +190,11 @@ class FoxCVM:
             Op.RND: 27,
             Op.BUILD_LIST: 28,
             Op.GET_INDEX: 29,
-            Op.SET_INDEX: 30
+            Op.SET_INDEX: 30,
+            Op.PACK_NEW: 28,
+            Op.PACK_GET: 29,
+            Op.PACK_SET: 30,
+            Op.BIND_CALL: 31,
         }
 
         var_map = {}
@@ -151,7 +209,11 @@ class FoxCVM:
             op = inst[0]
             opcode_num = op_map.get(op, 0)
             if opcode_num == 0:
-                continue
+                op_name = op.name if hasattr(op, "name") else str(op)
+                raise NotImplementedError(
+                    f"Native C VM (FoxCVM) does not support instruction '{op_name}'. "
+                    f"Use Python VM or Tree-Walking Interpreter."
+                )
             if op == Op.LOAD_CONST:
                 flat_len += 3
             elif op in (Op.LOAD_VAR, Op.STORE_VAR):
@@ -189,7 +251,10 @@ class FoxCVM:
             op = inst[0]
             opcode_num = op_map.get(op, 0)
             if opcode_num == 0:
-                continue
+                op_name = op.name if hasattr(op, "name") else str(op)
+                raise NotImplementedError(
+                    f"Native C VM (FoxCVM) does not support instruction '{op_name}'."
+                )
 
             flat_inst.append(opcode_num)
 

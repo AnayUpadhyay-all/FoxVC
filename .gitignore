@@ -32,10 +32,5 @@ Thumbs.db
 .venv/
 venv/
 .vscode/
-tests/legacy_v0_3/
-tests/v0_5/
-make_readme.py
-tests/legacy_v0_3/
-tests/v0_5/
 make_readme.py
 peak_test.py

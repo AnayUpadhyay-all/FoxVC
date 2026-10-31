@@ -136,8 +136,12 @@ class Interpreter:
         'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args),
         'type': lambda x: type(x).__name__,
     }
-    def __init__(self):
-        self.shelf = get_standard_shelf()
+    def __init__(self, policy: Optional[Any] = None, sandboxed: bool = False, allowed_dir: Optional[str] = None, input_source: Optional[Any] = None):
+        self.security_policy = policy
+        self.sandboxed = sandboxed
+        self.allowed_dir = allowed_dir
+        self.input_source = input_source
+        self.shelf = get_standard_shelf(policy=policy, sandboxed=sandboxed, allowed_dir=allowed_dir)
         self.global_env = Environment(initial=self.shelf)
         self.current_env = self.global_env
         self.global_env.update({
@@ -165,6 +169,7 @@ class Interpreter:
             self.current_env = self.global_env
 
     def reset(self):
+        self.shelf = get_standard_shelf(policy=self.security_policy, sandboxed=self.sandboxed, allowed_dir=self.allowed_dir)
         self.global_env = Environment(initial=self.shelf)
         self.global_env.update({'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args), 'min': lambda *args: min(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else min(*args), 'type': lambda x: type(x).__name__})
         self.current_env = self.global_env
@@ -407,14 +412,20 @@ class Interpreter:
 
         if node_type == "AskExpression":
             prompt = str(self._evaluate(node.prompt)) if getattr(node, "prompt", None) else ""
-            try:
-                res = input(prompt)
+            if self.input_source is not None:
                 try:
-                    return float(res) if "." in res else int(res)
-                except ValueError:
-                    return res
-            except (EOFError, KeyboardInterrupt):
-                return ""
+                    res = str(self.input_source(prompt))
+                except Exception:
+                    res = ""
+            else:
+                try:
+                    res = input(prompt)
+                except (EOFError, KeyboardInterrupt):
+                    res = ""
+            try:
+                return float(res) if "." in res else int(res)
+            except ValueError:
+                return res
 
         if node_type == "PackLiteral":
             pack_dict = {}

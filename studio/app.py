@@ -13,7 +13,6 @@ from tkinter import ttk, filedialog, messagebox
 
 import engine.runtime as rt
 from engine.runner import run_foxvc, run_foxvc_diagnostic
-from engine.web import FoxWebRuntime
 
 class LineNumbers(tk.Canvas):
     def __init__(self, parent, text_widget, **kwargs):
@@ -484,10 +483,7 @@ class FoxVCStudio:
         doc = self.get_active_doc()
         if not doc: return
         res = run_foxvc(self.editor.get("1.0", tk.END), file_path=doc.filepath)
-        if res.success and getattr(res, "is_web_app", False):
-            FoxWebRuntime.launch(res.web_app)
-        else:
-            messagebox.showinfo("FoxVC Web", "No mounted WebApplication found. Use 'mount app' or write an .fweb application.")
+        messagebox.showinfo("FoxVC Web", "Web Studio is available via 'python3 run_web.py'.")
 
 def main():
     root = tk.Tk()
