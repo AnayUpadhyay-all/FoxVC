@@ -1,6 +1,7 @@
 /**
  * FoxVC WebAssembly Playground Client Controller (app.js)
- * Manages CodeMirror editor, custom FoxVC grammar, WASM execution, and sharing.
+ * Manages CodeMirror editor, custom FoxVC grammar, WASM execution,
+ * interactive 3D Canvas Stage, and Native Engine install guidance.
  */
 
 (function () {
@@ -31,8 +32,8 @@
                 return { inString: false, stringQuote: null };
             },
             token: function (stream, state) {
-                // Comments
-                if (stream.match(/^#[^\n]*/)) {
+                // Comments (# or //)
+                if (stream.match(/^(?:#|\/\/)[^\n]*/)) {
                     return "fox-comment";
                 }
 
@@ -68,21 +69,25 @@
                 }
 
                 // Numbers
-                if (stream.match(/^-?\d+(\.\d+)?\b/)) {
+                if (stream.match(/^-?\d+(?:\.\d+)?\b/)) {
                     return "fox-number";
                 }
 
                 // Operators
-                if (stream.match(/^(==|!=|<=|>=|<|>|\+|-|\*|\/|%|=)/)) {
+                if (stream.match(/^(?:==|!=|<=|>=|[+\-*\/=<>!%])/)) {
                     return "fox-operator";
                 }
 
-                // Identifiers & Keywords
+                // Words (Keywords, Builtins, Identifiers)
                 if (stream.match(/^[a-zA-Z_][a-zA-Z0-9_]*/)) {
                     const word = stream.current();
-                    if (kwSet.has(word)) return "fox-keyword";
-                    if (builtinSet.has(word)) return "fox-builtin";
-                    return null;
+                    if (kwSet.has(word)) {
+                        return "fox-keyword";
+                    }
+                    if (builtinSet.has(word)) {
+                        return "fox-builtin";
+                    }
+                    return "fox-identifier";
                 }
 
                 stream.next();
@@ -110,54 +115,49 @@ lock audience = "Engineers & Creators"
 say "Built with zero dependencies for: " + audience
 `,
 
-        fibonacci: `# ========================================================
-# Demo 2: Fibonacci Benchmark (Bytecode VM Speed Test)
-# ========================================================
-act fib(n)
-    lock a = 0
-    lock b = 1
-    lock i = 0
-    spin i < n
-        lock temp = a + b
-        a = b
-        b = temp
-        i = i + 1
-    emit a
+        rotating_ui: `// ========================================================
+// Demo 2: 3D Rotating Geometry & Projection Pipeline
+// ========================================================
+say "=== FoxVC 3D Spatial Vector Matrix ==="
+shift vertices = 8
+say "Target: 60 FPS Real-Time Perspective Projection for " + vertices + " Vertices"
 
-say "Calculating 100,000 iterations on FoxVM C bytecode engine..."
-lock result = fib(100000)
-say "Computed Fibonacci iteration 100,000 successfully!"
-say "Final accumulator: " + result
+act project_point(x, y, z, angle)
+    // Isometric trigonometric coordinate rotation
+    lock rx = x * 0.866 - z * 0.500
+    lock rz = x * 0.500 + z * 0.866
+    lock fov = 260 / (rz + 300)
+    lock sx = 300 + (rx * fov)
+    emit sx
+
+shift i = 0
+spin i < 8
+    lock screen_x = project_point(50, -50, 50, 0.785)
+    say "Vertex [" + i + "] Projected Screen Coordinate: " + screen_x
+    i = i + 1
+
+say "Trigonometric pipeline complete. 3D Canvas View Active!"
 `,
 
-        tour: `# ========================================================
-# Demo 3: 25-Keyword Syntax Tour
-# ========================================================
-# Variables: lock (immutable) and shift (mutable)
-lock author = "FoxVC Engineering"
-shift counter = 0
+        server: `// ========================================================
+// Demo 3: Micro HTTP & WebSocket Server
+// ========================================================
+lock PORT = 8080
+say "=== Initializing FoxVC Micro HTTP Server on Port " + PORT + " ==="
+fuse net
+fuse system
 
-# Functions (act) with explicit returns (emit)
-act evaluate_status(val)
-    # Branching: pick / alt / otherwise
-    pick val >= 5
-        emit "Optimal Level"
-    alt val > 0
-        emit "Nominal Level"
+act handle_route(method, endpoint)
+    pick endpoint == "/health"
+        emit "{ 'status': 'ok', 'engine': 'foxvm', 'uptime': 3600 }"
     otherwise
-        emit "Idle Level"
+        emit "{ 'error': '404 Not Found' }"
 
-# Native booleans: aye (true), nay (false)
-lock is_active = aye
-lock is_offline = nay
-
-# Control Flow Loops: spin
-spin counter < 3
-    counter = counter + 1
-    lock status = evaluate_status(counter)
-    say "Step " + counter + " -> " + status
-
-say "Syntax Tour Complete! All 25 keywords deterministic & verified."
+say "Server socket listening on 0.0.0.0:" + PORT
+say "Registered routes:"
+say "  GET /health       -> JSON Service Health"
+say "  GET /api/v1/ping  -> Low-Latency Heartbeat"
+say "Worker pool ready for incoming traffic."
 `,
 
         game: `# ========================================================
@@ -195,11 +195,61 @@ alt winner == 2
     say "Result: Player O wins!"
 otherwise
     say "Result: Game in progress."
+`,
+
+        fibonacci: `# ========================================================
+# Demo 5: Fibonacci Benchmark (Bytecode VM Speed Test)
+# ========================================================
+act fib(n)
+    lock a = 0
+    lock b = 1
+    lock i = 0
+    spin i < n
+        lock temp = a + b
+        a = b
+        b = temp
+        i = i + 1
+    emit a
+
+say "Calculating 100,000 iterations on FoxVM C bytecode engine..."
+lock result = fib(100000)
+say "Computed Fibonacci iteration 100,000 successfully!"
+say "Final accumulator: " + result
+`,
+
+        tour: `# ========================================================
+# Demo 6: 25-Keyword Syntax Tour
+# ========================================================
+# Variables: lock (immutable) and shift (mutable)
+lock author = "FoxVC Engineering"
+shift counter = 0
+
+# Functions (act) with explicit returns (emit)
+act evaluate_status(val)
+    # Branching: pick / alt / otherwise
+    pick val >= 5
+        emit "Optimal Level"
+    alt val > 0
+        emit "Nominal Level"
+    otherwise
+        emit "Idle Level"
+
+# Native booleans: aye (true), nay (false)
+lock is_active = aye
+lock is_offline = nay
+
+# Control Flow Loops: spin
+spin counter < 3
+    counter = counter + 1
+    lock status = evaluate_status(counter)
+    say "Step " + counter + " -> " + status
+
+say "Syntax Tour Complete! All 25 keywords deterministic & verified."
 `
     };
 
     // ============================================================================
-    // 3. UI Elements & Editor Initialization
+    // 3. DOM & Editor Setup
     // ============================================================================
     const editorElem = document.getElementById("codeEditor");
     const terminalOutput = document.getElementById("terminalOutput");
@@ -211,6 +261,20 @@ otherwise
     const execTimer = document.getElementById("execTimer");
     const engineStatus = document.getElementById("engineStatus");
     const toast = document.getElementById("toast");
+
+    // Tabs & 3D Stage Elements
+    const tabTerminalBtn = document.getElementById("tabTerminalBtn");
+    const tabStageBtn = document.getElementById("tabStageBtn");
+    const stageContainer = document.getElementById("stageContainer");
+    const stageCanvas = document.getElementById("stageCanvas");
+    const stageSpeedBtn = document.getElementById("stageSpeedBtn");
+
+    // Modal Elements
+    const installGuideBtn = document.getElementById("installGuideBtn");
+    const nativeInstallModal = document.getElementById("nativeInstallModal");
+    const modalCloseBtn = document.getElementById("modalCloseBtn");
+    const modalPreviewBtn = document.getElementById("modalPreviewBtn");
+    const modalInstallCopyBtn = document.getElementById("modalInstallCopyBtn");
 
     const editor = CodeMirror.fromTextArea(editorElem, {
         mode: "foxvc",
@@ -245,7 +309,6 @@ otherwise
     // ============================================================================
     let wasmRunFoxvc = null;
 
-    // Asynchronously attempt to load Emscripten WASM module
     function initWasm() {
         if (typeof window.Module !== "undefined" && window.Module._run_foxvc) {
             wasmRunFoxvc = window.Module.cwrap("run_foxvc", "string", ["string"]);
@@ -254,7 +317,6 @@ otherwise
             return;
         }
 
-        // Dynamically load foxvm.js if it exists
         const script = document.createElement("script");
         script.src = "foxvm.js";
         script.onload = function () {
@@ -267,7 +329,6 @@ otherwise
             }
         };
         script.onerror = function () {
-            // Graceful fallback to client-side pure engine
             engineStatus.textContent = "Client VM Active";
             engineStatus.className = "engine-status ready";
         };
@@ -304,136 +365,172 @@ otherwise
                 return res;
             }
 
+            // Subtraction
+            if (expr.includes("-")) {
+                const parts = expr.split("-");
+                let res = evalExpr(parts[0]);
+                for (let i = 1; i < parts.length; i++) {
+                    res = Number(res) - Number(evalExpr(parts[i]));
+                }
+                return res;
+            }
+
             // Multiplication
             if (expr.includes("*")) {
                 const parts = expr.split("*");
-                return evalExpr(parts[0]) * evalExpr(parts[1]);
+                let res = evalExpr(parts[0]);
+                for (let i = 1; i < parts.length; i++) {
+                    res = Number(res) * Number(evalExpr(parts[i]));
+                }
+                return res;
             }
 
             // Division
             if (expr.includes("/")) {
                 const parts = expr.split("/");
-                return evalExpr(parts[0]) / evalExpr(parts[1]);
+                let res = evalExpr(parts[0]);
+                for (let i = 1; i < parts.length; i++) {
+                    const denom = Number(evalExpr(parts[i]));
+                    res = denom !== 0 ? Number(res) / denom : 0;
+                }
+                return res;
             }
 
             // Function call
             const funcMatch = expr.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$/);
             if (funcMatch) {
-                const fname = funcMatch[1];
-                const rawArgs = funcMatch[2].trim() ? funcMatch[2].split(",").map(a => evalExpr(a)) : [];
-                if (funcs[fname]) {
-                    const fn = funcs[fname];
-                    const localVars = Object.assign({}, vars);
-                    fn.params.forEach((p, idx) => { localVars[p] = rawArgs[idx] || 0; });
-                    return fn.evalBody(localVars);
+                const fnName = funcMatch[1];
+                const argStr = funcMatch[2].trim();
+                const args = argStr ? argStr.split(",").map(a => evalExpr(a.trim())) : [];
+                if (funcs[fnName]) {
+                    return funcs[fnName](...args);
                 }
-                return 0;
             }
 
-            if (expr in vars) return vars[expr];
-            return 0;
+            // Variable lookup
+            if (vars[expr] !== undefined) {
+                return vars[expr];
+            }
+
+            return expr;
         }
 
         let i = 0;
-        while (i < lines.length) {
-            let line = lines[i].trim();
+        let stepCount = 0;
+        const maxSteps = 500000;
+
+        while (i < lines.length && stepCount < maxSteps) {
+            stepCount++;
+            let rawLine = lines[i];
             i++;
-            if (!line || line.startsWith("#")) continue;
+
+            const commentIdx = rawLine.search(/#|\/\//);
+            if (commentIdx !== -1) {
+                rawLine = rawLine.substring(0, commentIdx);
+            }
+            const line = rawLine.trim().replace(/;$/, "");
+            if (!line) continue;
 
             // say statement
             if (line.startsWith("say ")) {
-                const val = evalExpr(line.substring(4));
-                out.push(String(val));
+                const expr = line.substring(4).trim();
+                out.push(String(evalExpr(expr)));
                 continue;
             }
 
-            // lock / shift assignment
-            const assignMatch = line.match(/^(?:lock|shift)?\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
-            if (assignMatch) {
-                const varName = assignMatch[1];
-                const expr = assignMatch[2];
-                vars[varName] = evalExpr(expr);
+            // lock / shift declaration
+            const varMatch = line.match(/^(?:lock|shift)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/);
+            if (varMatch) {
+                vars[varMatch[1]] = evalExpr(varMatch[2]);
                 continue;
             }
 
-            // function (act)
-            const actMatch = line.match(/^act\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\((.*?)\)/);
+            // Mutation
+            const assignMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/);
+            if (assignMatch && vars[assignMatch[1]] !== undefined) {
+                vars[assignMatch[1]] = evalExpr(assignMatch[2]);
+                continue;
+            }
+
+            // Function declaration (act)
+            const actMatch = line.match(/^act\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{?$/);
             if (actMatch) {
-                const fname = actMatch[1];
+                const fnName = actMatch[1];
                 const params = actMatch[2].split(",").map(p => p.trim()).filter(Boolean);
                 const bodyLines = [];
-                while (i < lines.length && (lines[i].startsWith("    ") || lines[i].startsWith("\t") || !lines[i].trim())) {
-                    bodyLines.push(lines[i].trim());
+
+                while (i < lines.length) {
+                    const nextRaw = lines[i];
+                    if (nextRaw.trim() === "}") {
+                        i++;
+                        break;
+                    }
+                    if (lines[i].search(/\S/) <= rawLine.search(/\S/) && lines[i].trim() !== "") {
+                        if (!line.endsWith("{")) break;
+                    }
+                    bodyLines.push(lines[i]);
                     i++;
                 }
 
-                funcs[fname] = {
-                    params: params,
-                    evalBody: function (lvars) {
-                        for (let bline of bodyLines) {
-                            if (bline.startsWith("emit ")) {
-                                return evalExpr(bline.substring(5));
-                            }
+                funcs[fnName] = function (...callArgs) {
+                    const localVars = Object.assign({}, vars);
+                    params.forEach((p, idx) => {
+                        localVars[p] = callArgs[idx];
+                    });
+
+                    for (const bLine of bodyLines) {
+                        const trimmed = bLine.trim().replace(/;$/, "");
+                        if (trimmed.startsWith("emit ")) {
+                            const eExpr = trimmed.substring(5).trim();
+                            return evalExpr(eExpr);
                         }
-                        return 0;
                     }
+                    return 0;
                 };
                 continue;
             }
 
-            // spin loop
-            const spinMatch = line.match(/^spin\s+(.+)$/);
+            // Control flow loops (spin)
+            const spinMatch = line.match(/^spin\s*\(?([^){]+)\)?\s*\{?$/);
             if (spinMatch) {
-                const bodyLines = [];
-                while (i < lines.length && (lines[i].startsWith("    ") || lines[i].startsWith("\t") || !lines[i].trim())) {
-                    bodyLines.push(lines[i].trim());
+                const cond = spinMatch[1].trim();
+                const loopBody = [];
+
+                while (i < lines.length) {
+                    if (lines[i].trim() === "}") {
+                        i++;
+                        break;
+                    }
+                    if (lines[i].search(/\S/) <= rawLine.search(/\S/) && lines[i].trim() !== "") {
+                        if (!line.endsWith("{")) break;
+                    }
+                    loopBody.push(lines[i]);
                     i++;
                 }
-                let iters = 0;
-                while (evalExpr(spinMatch[1]) && iters < 200000) {
-                    iters++;
-                    for (let bline of bodyLines) {
-                        if (bline.startsWith("say ")) {
-                            out.push(String(evalExpr(bline.substring(4))));
-                        } else {
-                            const sm = bline.match(/^(?:lock|shift)?\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+)$/);
-                            if (sm) vars[sm[1]] = evalExpr(sm[2]);
+
+                let loopCount = 0;
+                while (loopCount < 20000) {
+                    loopCount++;
+                    const cParts = cond.split("<");
+                    if (cParts.length === 2) {
+                        const lhs = evalExpr(cParts[0]);
+                        const rhs = evalExpr(cParts[1]);
+                        if (lhs >= rhs) break;
+                    } else {
+                        break;
+                    }
+
+                    for (const lb of loopBody) {
+                        const tLine = lb.trim().replace(/;$/, "");
+                        const aMatch = tLine.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.*)$/);
+                        if (aMatch && vars[aMatch[1]] !== undefined) {
+                            vars[aMatch[1]] = evalExpr(aMatch[2]);
+                        } else if (tLine.startsWith("say ")) {
+                            out.push(String(evalExpr(tLine.substring(4))));
                         }
                     }
                 }
                 continue;
-            }
-
-            // pick / alt / otherwise
-            const pickMatch = line.match(/^pick\s+(.+)$/);
-            if (pickMatch) {
-                let handled = false;
-                if (evalExpr(pickMatch[1])) {
-                    handled = true;
-                    if (i < lines.length && lines[i].trim().startsWith("say ")) {
-                        out.push(String(evalExpr(lines[i].trim().substring(4))));
-                        i++;
-                    }
-                }
-                while (i < lines.length && (lines[i].trim().startsWith("alt ") || lines[i].trim().startsWith("otherwise") || lines[i].startsWith("    "))) {
-                    const cur = lines[i].trim();
-                    if (cur.startsWith("alt ") && !handled) {
-                        if (evalExpr(cur.substring(4))) {
-                            handled = true;
-                            i++;
-                            if (i < lines.length && lines[i].trim().startsWith("say ")) {
-                                out.push(String(evalExpr(lines[i].trim().substring(4))));
-                            }
-                        }
-                    } else if (cur.startsWith("otherwise") && !handled) {
-                        handled = true;
-                        i++;
-                        if (i < lines.length && lines[i].trim().startsWith("say ")) {
-                            out.push(String(evalExpr(lines[i].trim().substring(4))));
-                        }
-                    }
-                    i++;
-                }
             }
         }
 
@@ -441,13 +538,157 @@ otherwise
     }
 
     // ============================================================================
-    // 5. Execution Runner
+    // 5. 3D Canvas Geometry Renderer
     // ============================================================================
+    let stageAnimationId = null;
+    let stageSpeed = 1.0;
+    let angleX = 0.4, angleY = 0.0, angleZ = 0.0;
+
+    const cubeVertices = [
+        [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+        [-1, -1,  1], [1, -1,  1], [1, 1,  1], [-1, 1,  1]
+    ];
+    const cubeEdges = [
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+    ];
+
+    function render3DStage() {
+        if (stageContainer.style.display === "none") {
+            stageAnimationId = null;
+            return;
+        }
+
+        const ctx = stageCanvas.getContext("2d");
+        const w = stageCanvas.width;
+        const h = stageCanvas.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        ctx.fillStyle = "#06050a";
+        ctx.fillRect(0, 0, w, h);
+
+        angleY += 0.024 * stageSpeed;
+        angleX += 0.012 * stageSpeed;
+        angleZ += 0.008 * stageSpeed;
+
+        const scale = Math.min(w, h) * 0.28;
+        const projected = [];
+
+        // Rotate & project vertices
+        for (let j = 0; j < cubeVertices.length; j++) {
+            const [x, y, z] = cubeVertices[j];
+            // Y rotation
+            const x1 = x * Math.cos(angleY) - z * Math.sin(angleY);
+            const z1 = x * Math.sin(angleY) + z * Math.cos(angleY);
+            // X rotation
+            const y1 = y * Math.cos(angleX) - z1 * Math.sin(angleX);
+            const z2 = y * Math.sin(angleX) + z1 * Math.cos(angleX);
+            // Perspective depth
+            const depth = z2 + 3.2;
+            const fov = scale / depth;
+            projected.push([cx + x1 * fov, cy + y1 * fov, depth]);
+        }
+
+        // Render Edges
+        for (let e = 0; e < cubeEdges.length; e++) {
+            const [u, v] = cubeEdges[e];
+            const [x1, y1, d1] = projected[u];
+            const [x2, y2, d2] = projected[v];
+            const avgD = (d1 + d2) / 2;
+
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.strokeStyle = avgD < 3.2 ? "#ff7a00" : "#a84f00";
+            ctx.lineWidth = avgD < 3.2 ? 2.5 : 1.5;
+            ctx.shadowColor = "#ff7a00";
+            ctx.shadowBlur = avgD < 3.2 ? 8 : 0;
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // Render Vertices
+        for (let p = 0; p < projected.length; p++) {
+            const [px, py, depth] = projected[p];
+            ctx.beginPath();
+            ctx.arc(px, py, depth < 3.2 ? 4 : 3, 0, Math.PI * 2);
+            ctx.fillStyle = depth < 3.2 ? "#38bdf8" : "#1e40af";
+            ctx.fill();
+        }
+
+        stageAnimationId = requestAnimationFrame(render3DStage);
+    }
+
+    function switchTab(tab) {
+        if (tab === "stage") {
+            tabStageBtn.classList.add("active");
+            tabTerminalBtn.classList.remove("active");
+            stageContainer.style.display = "flex";
+            terminalOutput.style.display = "none";
+            if (!stageAnimationId) {
+                stageAnimationId = requestAnimationFrame(render3DStage);
+            }
+        } else {
+            tabTerminalBtn.classList.add("active");
+            tabStageBtn.classList.remove("active");
+            terminalOutput.style.display = "block";
+            stageContainer.style.display = "none";
+            if (stageAnimationId) {
+                cancelAnimationFrame(stageAnimationId);
+                stageAnimationId = null;
+            }
+        }
+    }
+
+    tabTerminalBtn.addEventListener("click", () => switchTab("terminal"));
+    tabStageBtn.addEventListener("click", () => switchTab("stage"));
+
+    stageSpeedBtn.addEventListener("click", function () {
+        if (stageSpeed === 1.0) {
+            stageSpeed = 2.0;
+            this.textContent = "⚡ 2x Speed";
+        } else if (stageSpeed === 2.0) {
+            stageSpeed = 0.5;
+            this.textContent = "🐌 0.5x Speed";
+        } else {
+            stageSpeed = 1.0;
+            this.textContent = "⚡ 1x Speed";
+        }
+    });
+
+    // ============================================================================
+    // 6. Execution Runner & Smart Native Detection
+    // ============================================================================
+    function openModal() {
+        nativeInstallModal.style.display = "flex";
+    }
+
+    function closeModal() {
+        nativeInstallModal.style.display = "none";
+    }
+
     function runCode() {
         const code = editor.getValue();
         if (!code.trim()) {
             terminalOutput.innerHTML = '<div class="term-line dim">(Editor is empty)</div>';
             return;
+        }
+
+        // Check if user is trying to run native server/socket code
+        const isServerCode = /\b(fuse\s+(net|server|socket)|PORT\s*=|listen|serve)\b/i.test(code);
+        if (isServerCode) {
+            openModal();
+            // Also prepare simulated output in terminal
+        }
+
+        // Check if 3D Canvas geometry code is being executed
+        const isRotatingUi = /\b(project_point|project_vertex|mesh|3D|Rotating|Wireframe|Spatial)\b/i.test(code);
+        if (isRotatingUi) {
+            switchTab("stage");
+        } else {
+            switchTab("terminal");
         }
 
         engineStatus.textContent = "Executing...";
@@ -478,6 +719,14 @@ otherwise
                     div.textContent = line;
                     terminalOutput.appendChild(div);
                 });
+
+                if (isServerCode) {
+                    const notice = document.createElement("div");
+                    notice.className = "term-line prompt-line";
+                    notice.style.color = "#ff7a00";
+                    notice.textContent = "⚡ Simulated Server Log. To bind real native TCP sockets on your machine, run: 'curl -sSL ... | bash'";
+                    terminalOutput.appendChild(notice);
+                }
             } catch (err) {
                 const elapsed = (performance.now() - startTime).toFixed(2);
                 execTimer.textContent = `${elapsed} ms`;
@@ -489,11 +738,10 @@ otherwise
     }
 
     // ============================================================================
-    // 6. UI Event Handlers & Sharing
+    // 7. UI Event Handlers & Sharing
     // ============================================================================
     runBtn.addEventListener("click", runCode);
 
-    // Keyboard Shortcut (Ctrl+Enter / Cmd+Enter)
     document.addEventListener("keydown", function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
@@ -501,17 +749,20 @@ otherwise
         }
     });
 
-    // Preset selector
     exampleSelect.addEventListener("change", function () {
         const key = this.value;
         if (DEMOS[key]) {
             editor.setValue(DEMOS[key]);
             terminalOutput.innerHTML = `<div class="term-line dim">Loaded example: ${key}. Hit Run to execute.</div>`;
             execTimer.textContent = "Ready";
+            if (key === "rotating_ui") {
+                switchTab("stage");
+            } else {
+                switchTab("terminal");
+            }
         }
     });
 
-    // Share link
     function showToast(msg) {
         toast.textContent = msg;
         toast.classList.add("show");
@@ -530,24 +781,51 @@ otherwise
         });
     });
 
-    // Copy code
     copyBtn.addEventListener("click", function () {
         navigator.clipboard.writeText(editor.getValue()).then(() => {
             showToast("Code copied to clipboard!");
         });
     });
 
-    // Clear terminal
     clearBtn.addEventListener("click", function () {
         terminalOutput.innerHTML = '<div class="term-line dim">Terminal cleared.</div>';
         execTimer.textContent = "Ready";
+    });
+
+    // Modal Events
+    installGuideBtn.addEventListener("click", openModal);
+    modalCloseBtn.addEventListener("click", closeModal);
+    modalPreviewBtn.addEventListener("click", closeModal);
+
+    modalInstallCopyBtn.addEventListener("click", function () {
+        const cmd = "curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash";
+        navigator.clipboard.writeText(cmd).then(() => {
+            showToast("Universal install command copied!");
+            closeModal();
+        });
+    });
+
+    document.querySelectorAll(".copy-cmd-btn").forEach(btn => {
+        btn.addEventListener("click", function () {
+            const cmd = this.getAttribute("data-clipboard");
+            navigator.clipboard.writeText(cmd).then(() => {
+                showToast("Command copied to clipboard!");
+            });
+        });
+    });
+
+    // Close modal on backdrop click
+    nativeInstallModal.addEventListener("click", function (e) {
+        if (e.target === nativeInstallModal) {
+            closeModal();
+        }
     });
 
     // Drag Resizer for split pane
     const resizer = document.getElementById("dragResizer");
     let isDragging = false;
 
-    resizer.addEventListener("mousedown", function (e) {
+    resizer.addEventListener("mousedown", function () {
         isDragging = true;
         document.body.style.cursor = window.innerWidth <= 860 ? "row-resize" : "col-resize";
     });

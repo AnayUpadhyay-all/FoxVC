@@ -27,9 +27,11 @@
                 <label for="exampleSelect" class="sr-only">Examples</label>
                 <select id="exampleSelect" class="select-dropdown" aria-label="Load Example Code">
                     <option value="hello">Example: Hello World</option>
+                    <option value="rotating_ui">Canvas: Rotating 3D UI & Geometry</option>
+                    <option value="server">Server: HTTP & WebSocket Micro-Server</option>
+                    <option value="game">Routine: Tic-Tac-Toe Arena</option>
                     <option value="fibonacci">Benchmark: Fibonacci (100k)</option>
                     <option value="tour">Tour: 25-Keyword Syntax</option>
-                    <option value="game">Routine: Tic-Tac-Toe Arena</option>
                 </select>
             </div>
         </div>
@@ -39,6 +41,9 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
                 <span>Run</span>
                 <kbd class="shortcut-tag">Ctrl+↵</kbd>
+            </button>
+            <button id="installGuideBtn" class="btn btn-install" title="Install FoxVC Natively">
+                <span>⚡ Install FoxVC</span>
             </button>
         </div>
 
@@ -80,26 +85,79 @@
         <!-- Divider Bar -->
         <div class="resizer" id="dragResizer"></div>
 
-        <!-- Terminal Output Panel -->
+        <!-- Right Side: Terminal & 3D Stage Panel -->
         <section class="panel terminal-panel">
             <div class="panel-header">
-                <div class="terminal-dots">
-                    <span class="t-dot red"></span>
-                    <span class="t-dot yellow"></span>
-                    <span class="t-dot green"></span>
-                    <span class="terminal-label">FoxVM Console</span>
+                <div class="panel-tab-group">
+                    <button class="panel-tab active" id="tabTerminalBtn">🖥 Terminal Console</button>
+                    <button class="panel-tab" id="tabStageBtn">🌀 3D Rotating Stage</button>
                 </div>
                 <div class="terminal-meta">
                     <span id="execTimer" class="exec-timer">Ready</span>
                     <span id="engineStatus" class="engine-status ready">Engine Ready</span>
                 </div>
             </div>
+
+            <!-- Terminal Output View -->
             <div class="terminal-body" id="terminalOutput">
                 <div class="term-line prompt-line">FoxVC Bytecode Virtual Machine (WASM) initialized.</div>
                 <div class="term-line dim">Press Run or hit Ctrl+Enter to execute.</div>
             </div>
+
+            <!-- 3D Canvas Stage View -->
+            <div class="stage-container" id="stageContainer" style="display: none;">
+                <canvas id="stageCanvas" width="600" height="420"></canvas>
+                <div class="stage-hud">
+                    <span>60 FPS Vector Geometry</span>
+                    <button id="stageSpeedBtn" class="hud-btn">⚡ 1x Speed</button>
+                </div>
+            </div>
         </section>
     </main>
+
+    <!-- Native Engine Required Modal -->
+    <div id="nativeInstallModal" class="modal-backdrop" style="display: none;">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span class="modal-icon">⚡</span>
+                    <span>Native Hardware & Server Engine Required</span>
+                </div>
+                <button id="modalCloseBtn" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">
+                    You are invoking native capabilities (such as raw TCP/WebSocket servers, multi-threaded event loops, or system daemon threads).
+                    In-browser WebAssembly runs in a client-side sandbox without host socket access.
+                </p>
+                <div class="install-block">
+                    <div class="install-label">1. Linux / macOS Universal 1-Line Installer:</div>
+                    <div class="code-copy-row">
+                        <code>curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash</code>
+                        <button class="copy-cmd-btn" data-clipboard="curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash">Copy</button>
+                    </div>
+                </div>
+                <div class="install-block">
+                    <div class="install-label">2. Android (Termux) Native Installation:</div>
+                    <div class="code-copy-row">
+                        <code>pkg install -y clang git python make && curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash</code>
+                        <button class="copy-cmd-btn" data-clipboard="pkg install -y clang git python make && curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash">Copy</button>
+                    </div>
+                </div>
+                <div class="install-block">
+                    <div class="install-label">3. Compile Zero-Dependency Standalone Binary:</div>
+                    <div class="code-copy-row">
+                        <code>foxvc build server.fox -o server && ./server</code>
+                        <button class="copy-cmd-btn" data-clipboard="foxvc build server.fox -o server && ./server">Copy</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="modalPreviewBtn" class="btn btn-secondary">Preview Simulated Run in Browser</button>
+                <button id="modalInstallCopyBtn" class="btn btn-primary">Copy 1-Line Install Script</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast">Link copied to clipboard!</div>

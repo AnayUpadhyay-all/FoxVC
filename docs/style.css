@@ -467,3 +467,232 @@ html, body {
         display: none;
     }
 }
+
+/* ============================================================================
+ * Panel Tabs & 3D Stage Container
+ * ============================================================================ */
+.panel-tab-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.panel-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.panel-tab:hover {
+    color: var(--text-main);
+    background: #1c1c28;
+}
+
+.panel-tab.active {
+    color: #ff7a00;
+    background: #231b26;
+}
+
+.btn-install {
+    background: #1b2f27;
+    color: #10b981;
+    border: 1px solid #10b98144;
+    font-weight: 700;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.btn-install:hover {
+    background: #10b981;
+    color: #07070a;
+}
+
+.stage-container {
+    flex: 1;
+    position: relative;
+    background: #06050a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+#stageCanvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.stage-hud {
+    position: absolute;
+    bottom: 12px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: #7a7088;
+    pointer-events: none;
+}
+
+.hud-btn {
+    pointer-events: auto;
+    background: #1a1726;
+    color: #38bdf8;
+    border: 1px solid #38bdf833;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    cursor: pointer;
+}
+
+/* ============================================================================
+ * Native Install Modal
+ * ============================================================================ */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(4, 4, 8, 0.82);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+}
+
+.modal-box {
+    background: #100f16;
+    border: 1px solid #2d263b;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 620px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    overflow: hidden;
+    animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #15131e;
+    border-bottom: 1px solid #231f2f;
+}
+
+.modal-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 14px;
+    color: #ff7a00;
+}
+
+.modal-icon {
+    font-size: 16px;
+}
+
+.modal-close {
+    background: transparent;
+    border: none;
+    color: #8b8b9e;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #f1f1f6;
+}
+
+.modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.modal-desc {
+    font-size: 12px;
+    line-height: 1.6;
+    color: #b3adc2;
+}
+
+.install-block {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.install-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #38bdf8;
+}
+
+.code-copy-row {
+    display: flex;
+    align-items: center;
+    background: #09080e;
+    border: 1px solid #201c2c;
+    border-radius: 6px;
+    padding: 6px 10px;
+    gap: 8px;
+}
+
+.code-copy-row code {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #34d399;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.copy-cmd-btn {
+    background: #1c1829;
+    border: 1px solid #362e4f;
+    color: #e2e8f0;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.copy-cmd-btn:hover {
+    background: #ff7a00;
+    color: #ffffff;
+    border-color: #ff7a00;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: #15131e;
+    border-top: 1px solid #231f2f;
+}

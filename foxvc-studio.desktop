@@ -1,0 +1,23 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=FoxVC Studio
+GenericName=FoxVC Integrated Development Environment
+Comment=Focused desktop environment for authoring, diagnosing, and building FoxVC programs
+Exec=python3 /home/anay/Desktop/FoxVC/run_studio.py %F
+Path=/home/anay/Desktop/FoxVC
+Icon=/home/anay/Desktop/FoxVC/assets/foxvc.png
+Terminal=false
+Categories=Development;IDE;TextEditor;
+StartupNotify=true
+MimeType=text/x-foxvc;text/plain;
+Keywords=foxvc;fox;compiler;studio;ide;code;run;build;
+Actions=NewWindow;RunWebStudio;
+
+[Desktop Action NewWindow]
+Name=New FoxVC Window
+Exec=python3 /home/anay/Desktop/FoxVC/run_studio.py
+
+[Desktop Action RunWebStudio]
+Name=Launch Web Studio
+Exec=python3 /home/anay/Desktop/FoxVC/run_web.py
