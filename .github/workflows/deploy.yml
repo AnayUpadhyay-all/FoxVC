@@ -1,0 +1,60 @@
+name: Build & Deploy WebAssembly Playground
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Emscripten SDK
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.58
+
+      - name: Verify Emscripten
+        run: emcc --version
+
+      - name: Compile FoxVM to WebAssembly
+        run: |
+          cd docs
+          emcc wasm_bridge.c -O3 -s WASM=1 \
+            -s EXPORTED_FUNCTIONS="['_run_foxvc', '_malloc', '_free']" \
+            -s EXPORTED_RUNTIME_METHODS="['cwrap', 'stringToUTF8', 'UTF8ToString']" \
+            -s ALLOW_MEMORY_GROWTH=1 \
+            -s MODULARIZE=0 \
+            -o foxvm.js
+          ls -lh foxvm.js foxvm.wasm
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

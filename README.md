@@ -1,32 +1,197 @@
-# FoxVC 🦊
+<div align="center">
+
+# 🦊 FoxVC
+
+**An ultra-embeddable, zero-dependency C scripting language and bytecode VM with 25 deterministic keywords.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows-green.svg)](#)
+[![Playground Live](https://img.shields.io/badge/WASM_Playground-Live_in_Browser-orange.svg)](https://anayupadhyay-all.github.io/FoxVC/)
+[![Tests Passing](https://img.shields.io/badge/Tests-75%2F75%20Passing-brightgreen.svg)](#-verification--tests)
+[![Language Spec](https://img.shields.io/badge/Language%20Spec-v1.0.0-purple.svg)](FOXVC_SPEC.md)
+[![Engine Version](https://img.shields.io/badge/FoxVM%20Engine-v0.6.0--alpha-blue.svg)](FOXVC_CHANGELOG.md)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-green.svg)](#-one-line-install)
 
-> **FoxVC** is a fast, lightweight, and modern scripting language engineered for speed, clean syntax, and simple execution.
+<br/>
 
----
+### [▶ Try FoxVC Live in Your Browser (No Install Needed)](https://anayupadhyay-all.github.io/FoxVC/)
 
-## ✨ Features
+*Runs 100% client-side via WebAssembly. Zero installation, zero server dependencies.*
 
-* ⚡ **Fast & Lightweight:** Minimal memory footprint and instant execution.
-* 🌐 **Built-in Web Studio:** Interactive browser playground on port 8080.
-* 📦 **Portable:** Download and run directly without complex setup.
+<br/>
 
----
-
-## 📥 How to Download
-
-1. Click the green **Code** button at the top of this GitHub repository.
-2. Select **Download ZIP**.
-3. Extract the downloaded `FoxVC-main.zip` folder on your computer.
+</div>
 
 ---
 
-## ⚡ How to Run
+## 🎬 Hero Showcase
 
-### 🐧 Linux & 🍏 macOS
-Open your terminal inside the extracted folder:
+```text
+┌───────────────────────────────────────┐  ┌───────────────────────────────────────┐
+│           main.fox (Code)             │  │          Terminal (Execution)         │
+├───────────────────────────────────────┤  ├───────────────────────────────────────┤
+│ act fib(n)                            │  │ $ foxvc build main.fox -o fib_app     │
+│     lock a = 0                        │  │ 📦 Built native executable (14.6 KB)  │
+│     lock b = 1                        │  │ ⚡ Zero-dependency standalone binary   │
+│     shift i = 0                       │  │                                       │
+│     spin i < n                        │  │ $ ./fib_app                           │
+│         lock temp = a + b             │  │ Computing 100k iterations...          │
+│         a = b                         │  │ Result: 55                            │
+│         b = temp                      │  │ [Benchmark: 0.18 ms]                  │
+│         i = i + 1                     │  │                                       │
+│     emit a                            │  │                                       │
+│                                       │  │                                       │
+│ say fib(10)                           │  │                                       │
+└───────────────────────────────────────┘  └───────────────────────────────────────┘
+```
+
+> **Record this demo yourself:** Run `vhs demo.tape` using [Charm VHS](https://github.com/charmbracelet/vhs) to generate an animated demo GIF.
+
+---
+
+## ⚡ Why FoxVC?
+
+* **Zero-Dependency Footprint:** The entire bytecode runtime (`engine/foxvm.c`) is written in compact, portable C89/C99. It compiles into a **14 KB standalone executable** linking only `libc` and `libm`.
+* **Deterministic 25-Keyword Grammar:** No hidden syntax traps, no confusing inheritance hierarchies, and no bloated keyword catalogs. Exactly 25 official keywords govern the entire language specification.
+* **Dual-Tier VM Architecture:** Rapid prototyping via a tree-walking interpreter, combined with blazing-fast bytecode dispatch in the compact C virtual machine (`foxvm.c`).
+* **First-Class Mobile Support:** Native offline execution and on-device ARM64 compilation inside Android Termux, plus a touch-native Mobile Studio IDE.
+* **Instant In-Browser WASM:** Runs natively inside any modern browser with WebAssembly compiled via Emscripten.
+
+---
+
+## 🔍 Syntax at a Glance
+
+```fox
+# 1. Variables: lock (immutable) and shift (mutable)
+lock app_name = "FoxVC Arena"
+shift score = 0
+
+# 2. First-class functions (act) and explicit return signals (emit)
+act calculate_bonus(points, multiplier)
+    lock bonus = points * multiplier
+    emit bonus
+
+# 3. Branching: pick / alt / otherwise (pattern evaluation)
+pick score > 100
+    say "Rank: Grandmaster"
+alt score >= 50
+    say "Rank: Challenger"
+otherwise
+    say "Rank: Initiate"
+
+# 4. Deterministic loops: spin (while condition) and cycle (count)
+spin score < 30
+    score = score + 10
+    say "Progress Score: " + score
+
+lock final_payout = calculate_bonus(score, 2)
+say "Final Payout: " + final_payout
+```
+
+---
+
+## 🛠 Architecture Pipeline
+
+```text
+                           ┌───────────────────────────┐
+                           │    Source Code (.fox)     │
+                           └─────────────┬─────────────┘
+                                         │
+                                         ▼
+                           ┌───────────────────────────┐
+                           │   Token Lexer (lexer.py)  │
+                           └─────────────┬─────────────┘
+                                         │
+                                         ▼
+                           ┌───────────────────────────┐
+                           │   AST Parser (parser.py)  │
+                           └─────────────┬─────────────┘
+                                         │
+                                         ▼
+                           ┌───────────────────────────┐
+                           │ Bytecode Compiler (AOT)   │
+                           └─────────────┬─────────────┘
+                                         │
+                 ┌───────────────────────┴───────────────────────┐
+                 │                                               │
+                 ▼                                               ▼
+   ┌───────────────────────────┐                   ┌───────────────────────────┐
+   │    Native Desktop / OS    │                   │   Browser / WebAssembly   │
+   │    foxvm.c  (GCC/Clang)   │                   │   wasm_bridge.c  (EMCC)   │
+   │    14 KB Standalone ELF   │                   │   Client-Side Web Engine  │
+   └───────────────────────────┘                   └───────────────────────────┘
+```
+
+---
+
+## 📦 One-Line Install
+
+### Linux, macOS, and Android (Termux)
+Paste this single command into your terminal:
+
 ```bash
-./install.sh
-foxvc run main.fox
+curl -sSL https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/install.sh | bash
+```
+
+### Manual Build
+```bash
+git clone https://github.com/AnayUpadhyay-all/FoxVC.git
+cd FoxVC
+bash install.sh
+```
+
+---
+
+## 🚀 Quickstart Commands
+
+```bash
+# 1. Run any .fox script directly
+foxvc run examples/hello.fox
+
+# 2. Compile to a standalone, zero-dependency native executable binary
+foxvc build examples/math.fox -o math_app
+./math_app
+
+# 3. Emit clean, inspectable standalone C source code
+foxvc build examples/math.fox -o math_app.c --emit-c
+
+# 4. Launch the local Mobile / Web Touch Studio (port 8080)
+foxvc mobile
+```
+
+---
+
+## 📖 The 25 Official Keywords
+
+FoxVC guarantees language identity stability: **these 25 keywords are permanent.**
+
+| Category | Keywords | Purpose |
+| :--- | :--- | :--- |
+| **Functions & Return** | `act`, `emit` | Function definitions and explicit value return signals |
+| **Data Structures** | `pack`, `mold` | Data dictionaries, arrays, and structured blueprint templates |
+| **Branching** | `pick`, `alt`, `otherwise` | Deterministic control-flow branching and pattern matching |
+| **Loops** | `pulse`, `cycle`, `spin` | Game tick pulse loops, finite count cycles, and conditional loops |
+| **Loop Control** | `halt`, `skip` | Loop termination (break) and next iteration (continue) |
+| **I/O & Communication** | `say`, `ask` | Standard output printing and interactive user input |
+| **Safety & Traps** | `guard`, `trap` | Condition assertion guards and recovery traps |
+| **Modules** | `fuse` | Isolated hybrid module imports and standard library shelves |
+| **Variables** | `lock`, `shift`, `blank` | Immutable constants, mutable variables, and nil values |
+| **Booleans & Logic** | `aye`, `nay`, `also`, `either`, `deny` | Native boolean truth, falsehood, and logical operators |
+
+---
+
+## 🗺 Roadmap
+
+| Milestone | Target | Description | Status |
+| :--- | :--- | :--- | :---: |
+| **Milestone 1** | Language Core | 25-keyword grammar, lexer, AST parser, and bytecode VM | ✅ Completed |
+| **Milestone 2** | Runtime Hardening | Hybrid module isolation (`fuse`), shelves, structured diagnostics | ✅ Completed |
+| **Standalone Compiler** | `foxvc build` | Single-binary compiler producing ~14 KB native ELF/PE binaries | ✅ Completed |
+| **Mobile Studio** | Android Termux | PWA touch-interface, quick-insert keyboard toolbar, ARM64 engine | ✅ Completed |
+| **WebAssembly** | GitHub Pages | In-browser zero-install playground compiled via Emscripten | ✅ Completed |
+| **Milestone 3** | CVM 2.0 & LSP | Language Server Protocol for VS Code, advanced peephole optimizer | 🚧 In Progress |
+
+---
+
+## 📄 License
+
+FoxVC is open-source software licensed under the [MIT License](LICENSE).
