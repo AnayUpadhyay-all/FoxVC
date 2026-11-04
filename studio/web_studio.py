@@ -41,6 +41,15 @@ ALLOWED_ORIGINS = {
     f"http://{LOCAL_IP}:{PORT}",
 }
 
+ALLOWED_HOSTS = {
+    f"127.0.0.1:{PORT}",
+    f"localhost:{PORT}",
+    f"[::1]:{PORT}",
+    f"{LOCAL_IP}:{PORT}",
+    "127.0.0.1",
+    "localhost",
+}
+
 SANDBOX_WORKSPACE = os.path.join(tempfile.gettempdir(), "foxvc_web_sandbox")
 os.makedirs(SANDBOX_WORKSPACE, exist_ok=True)
 
