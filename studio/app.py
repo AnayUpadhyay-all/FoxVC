@@ -31,6 +31,8 @@ from engine.lexer import Lexer
 from engine.parser import Parser
 from engine.bytecode import BytecodeCompiler
 from engine.builder import StandaloneCompiler, BuildError
+from engine.formatter import FoxFormatter
+from engine.tester import FoxTestRunner
 
 
 class LineNumbers(CanvasBase):
@@ -310,6 +312,8 @@ class FoxVCStudio:
 
         btn("▶ RUN (F5)", self.run_code, bg_col=self.c_accent).pack(side=tk.RIGHT, padx=3)
         btn("🔍 AUDIT (F6)", self.run_diagnostics, bg_col="#252136", fg_col=self.c_cyan).pack(side=tk.RIGHT, padx=3)
+        btn("🧹 FMT (F4)", self.format_active_code, bg_col="#1C2420", fg_col="#34D399").pack(side=tk.RIGHT, padx=3)
+        btn("🧪 TEST (F10)", self.run_tests, bg_col="#2B2024", fg_col="#FB7185").pack(side=tk.RIGHT, padx=3)
         btn("⚡ BUILD BINARY (F8)", self.build_standalone_binary, bg_col="#1B3128", fg_col=self.c_green).pack(side=tk.RIGHT, padx=3)
         btn("🌀 3D STAGE (F9)", self.launch_3d_stage, bg_col="#291F38", fg_col="#C084FC").pack(side=tk.RIGHT, padx=3)
         btn("🌐 WEB (F7)", self.launch_web_app).pack(side=tk.RIGHT, padx=3)
@@ -581,11 +585,58 @@ class FoxVCStudio:
         self.editor.bind("<KeyRelease>", self._on_key_release)
         self.root.bind("<Control-n>", lambda e: self.new_file())
         self.root.bind("<Control-s>", lambda e: self.save_file())
+        self.root.bind("<F4>", lambda e: self.format_active_code())
         self.root.bind("<F5>", lambda e: self.run_code())
         self.root.bind("<F6>", lambda e: self.run_diagnostics())
         self.root.bind("<F7>", lambda e: self.launch_web_app())
         self.root.bind("<F8>", lambda e: self.build_standalone_binary())
         self.root.bind("<F9>", lambda e: self.launch_3d_stage())
+        self.root.bind("<F10>", lambda e: self.run_tests())
+
+    def format_active_code(self, event=None):
+        doc = self.get_active_doc()
+        if not doc:
+            return
+        code = self.editor.get("1.0", tk.END)
+        formatter = FoxFormatter()
+        formatted = formatter.format_source(code)
+        if formatted != code:
+            self.editor.delete("1.0", tk.END)
+            self.editor.insert("1.0", formatted)
+            doc.is_modified = True
+            doc.content = formatted
+            self.update_tab_bar()
+            self.lines.redraw()
+            self._apply_syntax_highlighting()
+        self.switch_drawer_tab("console")
+        self.out_text.insert(tk.END, "✓ Document formatted cleanly (canonical 4-space indentation).\n", "green")
+
+    def run_tests(self, event=None):
+        doc = self.get_active_doc()
+        if not doc:
+            return
+        self.save_file()
+        runner = FoxTestRunner()
+        self.switch_drawer_tab("console")
+        self.clear_output()
+        self.out_text.insert(tk.END, f"FOXVC TEST SUITE AUDIT — {doc.title}\n\n", "accent")
+        results = runner.run_file_suite(doc.filepath) if doc.filepath else []
+        if not results:
+            self.out_text.insert(tk.END, "No test functions (act test_*) found in document.\n", "muted")
+            return
+        passed_c, failed_c = 0, 0
+        for r in results:
+            tag = "badge_pass" if r.passed else "badge_fail"
+            txt = "PASS" if r.passed else "FAIL"
+            self.out_text.insert(tk.END, f" {txt} ", tag)
+            self.out_text.insert(tk.END, f"  {r.test_name} ({r.duration_ms:.2f}ms)\n")
+            if r.passed:
+                passed_c += 1
+            else:
+                failed_c += 1
+                if r.error_message:
+                    self.out_text.insert(tk.END, f"       ↳ {r.error_message}\n", "err")
+        self.out_text.insert(tk.END, f"\nTest Summary: {passed_c} Passed | {failed_c} Failed\n", "green" if failed_c == 0 else "err")
 
     def _on_key_release(self, event=None):
         doc = self.get_active_doc()

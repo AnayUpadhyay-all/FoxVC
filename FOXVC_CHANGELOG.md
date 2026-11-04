@@ -49,6 +49,31 @@
 
 ---
 
+## [0.6.0-alpha] - 2026-11-04
+### Added
+- **Developer Tooling CLI Suite:**
+  - `foxvc fmt <path> [-w / --write] [-c / --check]`: Canonical auto-formatter enforcing 4-space indentation and binary operator spacing while strictly preserving string literals.
+  - `foxvc lint <path> [--strict]`: Static code analyzer checking for unmutated `shift` variables, unread identifiers, dead code after `emit`/`halt`, and locked mutations.
+  - `foxvc test [dir]`: Native automated test runner executing `.fox` test suites and `act test_*()` functions with sub-millisecond execution timing.
+  - `foxvc lsp`: Full Language Server Protocol daemon speaking JSON-RPC 2.0 over stdin/stdout with real-time diagnostics, autocompletion for 25 keywords and shelves, and hover documentation.
+- **CVM 2.0 Native Object/Struct Parity:**
+  - Added native C struct and object member support (`Op.BUILD_PACK: 36`, `Op.GET_MEMBER: 37`, `Op.SET_MEMBER: 38`) allocated on the 8MB linear memory arena in `foxvm.c`.
+  - Added hardware assertion opcode (`Op.GUARD: 35`) directly inside the C dispatch loop.
+- **Expanded Standard Library Shelves:**
+  - `engine/shelves/data.py`: Native parsing and serialization for JSON, CSV, TOML, Base64, and Hex encoding.
+  - `engine/shelves/audio.py`: Native PCM sine wave sound synthesis, standard 16-bit Mono WAV file saving, tone playback, and Raylib audio hooks.
+  - `engine/shelves/socket.py`: Raw TCP client/server, UDP datagrams, and RFC-6455 WebSocket frame encoding/decoding.
+- **In-Browser WebAssembly Playground (`docs/`):**
+  - Standalone client-side WASM playground hosted on GitHub Pages with CodeMirror editor and live sharing.
+  - Interactive 60 FPS HTML5 Canvas 3D rotating geometry stage.
+  - Smart Native Engine Detection triggering 1-click install guidance when backend servers or hardware features are invoked.
+- **Visual Studio Code & Cursor Extension (`extensions/foxvc-vscode/`):**
+  - Complete TextMate grammar (`foxvc.tmLanguage.json`), language configuration, and commands wired to `foxvc run`, `foxvc build`, `foxvc fmt`, and `foxvc test`.
+- **Packaging:**
+  - Standardized modern `pyproject.toml` and `setup.py` for PyPI distribution and `pip install .`.
+
+---
+
 ## [0.3.4] - 2026-09-02
 ### Changed
 - Eliminated static render dependency in FoxVC Web Runtime.
