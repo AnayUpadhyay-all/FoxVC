@@ -1,0 +1,21 @@
+# FoxVC Native Test Suite (tests/native_test_suite.fox)
+
+act test_arithmetic()
+    lock a = 15
+    lock b = 25
+    lock total = a + b
+    guard total == 40
+    emit aye
+
+act test_booleans()
+    lock is_valid = aye
+    lock is_invalid = nay
+    guard is_valid
+    emit aye
+
+act test_loops()
+    shift count = 0
+    spin count < 100
+        count = count + 1
+    guard count == 100
+    emit aye

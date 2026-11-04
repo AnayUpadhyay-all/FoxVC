@@ -28,12 +28,24 @@ typedef struct {
 
 static FoxPack heap_packs[MAX_PACKS];
 static int pack_count = 0;
+
+typedef struct {
+    int mold_id;
+    int field_count;
+    int field_keys[32];
+    double field_vals[32];
+} FoxObject;
+
+static FoxObject heap_objects[MAX_PACKS];
+static int object_count = 0;
+
 static char g_memory_arena[ARENA_SIZE_BYTES];
 static size_t g_arena_offset = 0;
 
 void reset_memory_arena(void) {
     g_arena_offset = 0;
     pack_count = 0;
+    object_count = 0;
 }
 
 static void* arena_alloc(size_t size) {
@@ -360,6 +372,70 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                     call_args[i] = regs[inst[ip++]];
                 }
                 regs[dst] = dispatch_native(fn_name, call_args, argc);
+                break;
+            }
+            case 35: { // GUARD: [35, cond_reg]
+                int cond_reg = inst[ip++];
+                if (!regs[cond_reg]) {
+                    fprintf(stderr, "FoxVM Panic: Guard assertion failed!\n");
+                    return -1.0;
+                }
+                break;
+            }
+            case 36: { // BUILD_PACK / MOLD_NEW: [36, dst_reg, field_count, k0, v0_reg, k1, v1_reg...]
+                int dst = inst[ip++];
+                int count = inst[ip++];
+                if (object_count < MAX_PACKS) {
+                    int oid = object_count++;
+                    heap_objects[oid].mold_id = 0;
+                    heap_objects[oid].field_count = count;
+                    for (int f = 0; f < count && f < 32; f++) {
+                        heap_objects[oid].field_keys[f] = inst[ip++];
+                        heap_objects[oid].field_vals[f] = regs[inst[ip++]];
+                    }
+                    regs[dst] = (double)oid;
+                } else {
+                    regs[dst] = 0.0;
+                }
+                break;
+            }
+            case 37: { // GET_MEMBER: [37, dst_reg, obj_reg, key_str_idx]
+                int dst = inst[ip++];
+                int obj_reg = inst[ip++];
+                int key_idx = inst[ip++];
+                int oid = (int)regs[obj_reg];
+                double val = 0.0;
+                if (oid >= 0 && oid < object_count) {
+                    for (int f = 0; f < heap_objects[oid].field_count; f++) {
+                        if (heap_objects[oid].field_keys[f] == key_idx) {
+                            val = heap_objects[oid].field_vals[f];
+                            break;
+                        }
+                    }
+                }
+                regs[dst] = val;
+                break;
+            }
+            case 38: { // SET_MEMBER: [38, obj_reg, key_str_idx, val_reg]
+                int obj_reg = inst[ip++];
+                int key_idx = inst[ip++];
+                int val_reg = inst[ip++];
+                int oid = (int)regs[obj_reg];
+                if (oid >= 0 && oid < object_count) {
+                    int found = 0;
+                    for (int f = 0; f < heap_objects[oid].field_count; f++) {
+                        if (heap_objects[oid].field_keys[f] == key_idx) {
+                            heap_objects[oid].field_vals[f] = regs[val_reg];
+                            found = 1;
+                            break;
+                        }
+                    }
+                    if (!found && heap_objects[oid].field_count < 32) {
+                        int f = heap_objects[oid].field_count++;
+                        heap_objects[oid].field_keys[f] = key_idx;
+                        heap_objects[oid].field_vals[f] = regs[val_reg];
+                    }
+                }
                 break;
             }
             default:

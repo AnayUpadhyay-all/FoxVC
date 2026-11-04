@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foxvc"
+version = "0.6.0a0"
+description = "FoxVC: An ultra-compact, 25-keyword programming language with C bytecode VM and standalone binary compiler"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "Anay Upadhyay", email = "anayupadhyay@example.com" }
+]
+keywords = [
+    "compiler", "bytecode-vm", "programming-language", "c",
+    "webassembly", "termux", "systems-programming", "embedded-scripting"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Compilers",
+    "Topic :: Software Development :: Interpreters",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows"
+]
+
+[project.scripts]
+foxvc = "engine.cli:main"
+
+[tool.setuptools]
+packages = ["engine", "engine.shelves", "studio"]
+
+[tool.setuptools.package-data]
+engine = ["foxvm.c", "foxvm.so"]
+studio = ["web/*", "*.html", "manifest.json"]

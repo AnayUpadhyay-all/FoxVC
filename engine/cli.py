@@ -135,6 +135,12 @@ def show_cli_help():
   {t['primary']}build <file.fox> [-o bin]{RESET} Build standalone native executable binary 📦
   {t['primary']}mobile [port]{RESET}           Launch local Mobile Studio for Android & iOS 📱
 
+{t['accent']}Developer Tooling & Quality Assurance:{RESET}
+  {t['primary']}fmt <path> [-w]{RESET}          Canonical auto-formatter (4-space indentation) 🧹
+  {t['primary']}lint <path> [--strict]{RESET}   Static code analyzer & syntax safety linter 🔍
+  {t['primary']}test [dir]{RESET}               Native automated test runner for test_*.fox 🧪
+  {t['primary']}lsp{RESET}                      Language Server Protocol daemon for VS Code & Cursor 🤖
+
 {t['accent']}Den Sandbox & Interactive Tools:{RESET}
   {t['primary']}exercise{RESET}                 First interactive greeting exercise for beginners 🎓
   {t['primary']}den sandbox{RESET}             Enter persistent multiline scratchpad 🧪
@@ -686,6 +692,22 @@ def main():
         except Exception as e:
             print(f"Compilation Error: {str(e)}", file=sys.stderr)
             sys.exit(1)
+
+    if cmd == "fmt":
+        from engine.formatter import format_cli
+        sys.exit(format_cli(args[1:]))
+
+    if cmd == "lint":
+        from engine.linter import lint_cli
+        sys.exit(lint_cli(args[1:]))
+
+    if cmd == "test":
+        from engine.tester import test_cli
+        sys.exit(test_cli(args[1:]))
+
+    if cmd == "lsp":
+        from engine.lsp import lsp_cli
+        sys.exit(lsp_cli(args[1:]))
 
     if cmd == "run":
         if len(args) < 2:

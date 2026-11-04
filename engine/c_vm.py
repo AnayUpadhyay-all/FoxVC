@@ -88,7 +88,8 @@ class FoxCVM:
         Op.CALL, Op.RETURN, Op.PRINT, Op.EMIT,
         Op.SIN, Op.COS, Op.SQRT, Op.RND,
         Op.BUILD_LIST, Op.GET_INDEX, Op.SET_INDEX,
-        Op.PACK_NEW, Op.PACK_GET, Op.PACK_SET, Op.BIND_CALL
+        Op.PACK_NEW, Op.PACK_GET, Op.PACK_SET, Op.BIND_CALL,
+        Op.GUARD, Op.BUILD_PACK, Op.GET_MEMBER, Op.SET_MEMBER
     }
 
     RAYLIB_NATIVE_PRIMITIVES = {
@@ -223,6 +224,10 @@ class FoxCVM:
             Op.PACK_NEW: 32,
             Op.PACK_GET: 33,
             Op.PACK_SET: 34,
+            Op.GUARD: 35,
+            Op.BUILD_PACK: 36,
+            Op.GET_MEMBER: 37,
+            Op.SET_MEMBER: 38,
         }
 
         var_map = {}
@@ -270,6 +275,13 @@ class FoxCVM:
                 elements = inst[2] if len(inst) > 2 else []
                 flat_len += 4 + len(elements)
             elif op in (Op.GET_INDEX, Op.SET_INDEX):
+                flat_len += 4
+            elif op == Op.GUARD:
+                flat_len += 2
+            elif op == Op.BUILD_PACK:
+                elements = inst[2] if len(inst) > 2 else []
+                flat_len += 3 + (len(elements) * 2)
+            elif op in (Op.GET_MEMBER, Op.SET_MEMBER):
                 flat_len += 4
             else:
                 flat_len += 1
@@ -373,6 +385,24 @@ class FoxCVM:
             elif op == Op.SET_INDEX:
                 # [30, arr_reg, idx_reg, val_reg]
                 flat_inst.extend([inst[1], inst[2], inst[3]])
+            elif op == Op.GUARD:
+                flat_inst.append(inst[1])
+            elif op == Op.BUILD_PACK:
+                dst = inst[1]
+                pairs = inst[2] if len(inst) > 2 else []
+                flat_inst.extend([dst, len(pairs)])
+                for item in pairs:
+                    if isinstance(item, tuple) and len(item) == 2:
+                        k_idx = get_str_idx(str(item[0]))
+                        flat_inst.extend([k_idx, item[1]])
+                    else:
+                        flat_inst.extend([get_str_idx("val"), item if isinstance(item, int) else 0])
+            elif op == Op.GET_MEMBER:
+                dst, obj_reg, m_name = inst[1], inst[2], inst[3]
+                flat_inst.extend([dst, obj_reg, get_str_idx(str(m_name))])
+            elif op == Op.SET_MEMBER:
+                obj_reg, m_name, val_reg = inst[1], inst[2], inst[3]
+                flat_inst.extend([obj_reg, get_str_idx(str(m_name)), val_reg])
 
         return flat_inst, num_consts, str_consts
 

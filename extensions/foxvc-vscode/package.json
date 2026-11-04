@@ -1,0 +1,62 @@
+{
+  "name": "foxvc",
+  "displayName": "FoxVC Language Support",
+  "description": "Rich syntax highlighting, Language Server Protocol diagnostics, and compiler tools for the FoxVC programming language.",
+  "version": "0.6.0",
+  "publisher": "anayupadhyay",
+  "icon": "icon.png",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Snippets"
+  ],
+  "keywords": [
+    "foxvc",
+    "compiler",
+    "bytecode",
+    "embedded",
+    "scripting"
+  ],
+  "activationEvents": [
+    "onLanguage:foxvc"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "foxvc",
+        "aliases": ["FoxVC", "foxvc"],
+        "extensions": [".fox", ".foxc"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "foxvc",
+        "scopeName": "source.fox",
+        "path": "./syntaxes/foxvc.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "foxvc.run",
+        "title": "FoxVC: Run Current Script"
+      },
+      {
+        "command": "foxvc.build",
+        "title": "FoxVC: Build Standalone Native Binary"
+      },
+      {
+        "command": "foxvc.format",
+        "title": "FoxVC: Format Code (foxvc fmt)"
+      },
+      {
+        "command": "foxvc.test",
+        "title": "FoxVC: Run Test Suite (foxvc test)"
+      }
+    ]
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "FoxVC",
+  "scopeName": "source.fox",
+  "patterns": [
+    {
+      "name": "comment.line.number-sign.fox",
+      "match": "(#|//).*$"
+    },
+    {
+      "name": "string.quoted.double.fox",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.fox",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "string.quoted.single.fox",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "name": "constant.character.escape.fox",
+          "match": "\\\\."
+        }
+      ]
+    },
+    {
+      "name": "keyword.control.declaration.fox",
+      "match": "\\b(lock|shift|blank)\\b"
+    },
+    {
+      "name": "keyword.control.function.fox",
+      "match": "\\b(act|emit)\\b"
+    },
+    {
+      "name": "keyword.control.conditional.fox",
+      "match": "\\b(pick|alt|otherwise)\\b"
+    },
+    {
+      "name": "keyword.control.loop.fox",
+      "match": "\\b(spin|cycle|pulse|halt|skip)\\b"
+    },
+    {
+      "name": "keyword.control.exception.fox",
+      "match": "\\b(guard|trap|fuse)\\b"
+    },
+    {
+      "name": "keyword.control.data.fox",
+      "match": "\\b(pack|mold)\\b"
+    },
+    {
+      "name": "constant.language.boolean.fox",
+      "match": "\\b(aye|nay)\\b"
+    },
+    {
+      "name": "keyword.operator.logical.fox",
+      "match": "\\b(also|either|deny)\\b"
+    },
+    {
+      "name": "support.function.builtin.fox",
+      "match": "\\b(say|ask|len|push|pop|remove_at)\\b"
+    },
+    {
+      "name": "support.class.shelf.fox",
+      "match": "\\b(math|net|file|crypto|db|system|graphics|data|audio|socket)\\b"
+    },
+    {
+      "name": "constant.numeric.fox",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    {
+      "name": "keyword.operator.comparison.fox",
+      "match": "(==|!=|<=|>=|<|>)"
+    },
+    {
+      "name": "keyword.operator.arithmetic.fox",
+      "match": "(\\+|-|\\*|/|%|=)"
+    }
+  ]
+}

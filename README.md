@@ -153,10 +153,19 @@ foxvc run examples/hello.fox
 foxvc build examples/math.fox -o math_app
 ./math_app
 
-# 3. Emit clean, inspectable standalone C source code
-foxvc build examples/math.fox -o math_app.c --emit-c
+# 3. Canonical Auto-Formatting (enforces 4-space indentation)
+foxvc fmt . -w
 
-# 4. Launch the local Mobile / Web Touch Studio (port 8080)
+# 4. Static Code Linter (checks unused variables & safety rules)
+foxvc lint .
+
+# 5. Native Automated Test Runner
+foxvc test tests/
+
+# 6. Start Language Server Protocol daemon for VS Code & Cursor
+foxvc lsp
+
+# 7. Launch the local Mobile / Web Touch Studio (port 8080)
 foxvc mobile
 ```
 
@@ -187,10 +196,14 @@ FoxVC guarantees language identity stability: **these 25 keywords are permanent.
 | :--- | :--- | :--- | :---: |
 | **Milestone 1** | Language Core | 25-keyword grammar, lexer, AST parser, and bytecode VM | ✅ Completed |
 | **Milestone 2** | Runtime Hardening | Hybrid module isolation (`fuse`), shelves, structured diagnostics | ✅ Completed |
-| **Standalone Compiler** | `foxvc build` | Single-binary compiler producing ~14 KB native ELF/PE binaries | ✅ Completed |
+| **Standalone Compiler** | `foxvc build` | Single-binary compiler producing ~15 KB native ELF/PE binaries | ✅ Completed |
 | **Mobile Studio** | Android Termux | PWA touch-interface, quick-insert keyboard toolbar, ARM64 engine | ✅ Completed |
 | **WebAssembly** | GitHub Pages | In-browser zero-install playground compiled via Emscripten | ✅ Completed |
-| **Milestone 3** | CVM 2.0 & LSP | Language Server Protocol for VS Code, advanced peephole optimizer | 🚧 In Progress |
+| **Developer Tooling** | `fmt` & `lint` & `test` | Canonical 4-space auto-formatter, static analysis linter, and native test runner | ✅ Completed |
+| **Language Server** | `foxvc lsp` | Full JSON-RPC 2.0 LSP daemon with real-time squigglies, autocomplete & hover | ✅ Completed |
+| **CVM 2.0 Native Parity** | Pure C Objects | Native struct member allocation & lookups on 8MB linear arena in `foxvm.c` | ✅ Completed |
+| **Standard Shelves** | `data`, `audio`, `socket` | Native CSV/JSON/TOML, PCM WAV audio synthesis, and raw WebSocket framing | ✅ Completed |
+| **IDE Extension** | VS Code / Cursor | Official FoxVC marketplace extension with language client and TextMate grammar | ✅ Completed |
 
 ---
 

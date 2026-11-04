@@ -117,6 +117,30 @@ class ModuleManager:
         - Circular-import detection
         - Explicit export filtering (controlled exports)
         """
+        spec = str(module_spec).strip()
+        from engine.shelves import (
+            get_math_shelf, get_graphics_shelf, get_file_shelf, get_crypto_shelf,
+            get_net_shelf, get_db_shelf, get_system_shelf, get_data_shelf,
+            get_audio_shelf, get_socket_shelf
+        )
+        builtin_shelves = {
+            "math": lambda: get_math_shelf(),
+            "graphics": lambda: get_graphics_shelf(),
+            "file": lambda: get_file_shelf(security_policy),
+            "crypto": lambda: get_crypto_shelf(),
+            "net": lambda: get_net_shelf(security_policy),
+            "db": lambda: get_db_shelf(security_policy),
+            "system": lambda: get_system_shelf(security_policy),
+            "data": lambda: get_data_shelf(security_policy),
+            "audio": lambda: get_audio_shelf(security_policy),
+            "socket": lambda: get_socket_shelf(security_policy),
+        }
+        if spec in builtin_shelves:
+            shelf_dict = builtin_shelves[spec]()
+            pack = FoxPack(shelf_dict)
+            self.loaded_modules[spec] = pack
+            return pack
+
         try:
             canonical_path = self.resolver.resolve(module_spec, importing_file)
         except ModuleError as me:

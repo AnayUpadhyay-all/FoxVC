@@ -117,6 +117,9 @@ from engine.shelves.system import (
     fox_await_task,
     get_system_shelf
 )
+from engine.shelves.data import get_data_shelf
+from engine.shelves.audio import get_audio_shelf
+from engine.shelves.socket import get_socket_shelf
 from engine.shelves.compatibility import get_standard_shelf
 
 __all__ = [
@@ -129,6 +132,9 @@ __all__ = [
     "get_net_shelf",
     "get_db_shelf",
     "get_system_shelf",
+    "get_data_shelf",
+    "get_audio_shelf",
+    "get_socket_shelf",
     "fox_pack",
     "fox_push",
     "fox_pop",

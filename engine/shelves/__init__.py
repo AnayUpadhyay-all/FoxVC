@@ -19,6 +19,9 @@ from .crypto import get_crypto_shelf
 from .net import get_net_shelf
 from .db import get_db_shelf
 from .system import get_system_shelf
+from .data import get_data_shelf
+from .audio import get_audio_shelf
+from .socket import get_socket_shelf
 from .compatibility import get_standard_shelf
 
 __all__ = [
@@ -31,6 +34,9 @@ __all__ = [
     "get_net_shelf",
     "get_db_shelf",
     "get_system_shelf",
+    "get_data_shelf",
+    "get_audio_shelf",
+    "get_socket_shelf",
     "fox_pack",
     "fox_push",
     "fox_pop",
