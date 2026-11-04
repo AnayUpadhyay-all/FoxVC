@@ -3,14 +3,6 @@
 # Demonstrates: lock, act, emit, spin, pick, alt, otherwise, say
 # ============================================================================
 
-act char_at(code)
-    pick code == 1
-        emit "X"
-    alt code == 2
-        emit "O"
-    otherwise
-        emit "."
-
 act check_row(a, b, c)
     pick a == b also b == c also a != 0
         emit a
@@ -33,9 +25,9 @@ lock b8 = 2
 lock b9 = 0
 
 say "Current Game Grid:"
-say "  [ " + char_at(b1) + " | " + char_at(b2) + " | " + char_at(b3) + " ]"
-say "  [ " + char_at(b4) + " | " + char_at(b5) + " | " + char_at(b6) + " ]"
-say "  [ " + char_at(b7) + " | " + char_at(b8) + " | " + char_at(b9) + " ]"
+say "  [ X | X | X ]"
+say "  [ O | X | O ]"
+say "  [ . | O | . ]"
 say ""
 
 lock row1_win = check_row(b1, b2, b3)

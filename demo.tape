@@ -1,12 +1,10 @@
 # ============================================================================
 # FoxVC VHS Demo Recording Script (demo.tape)
-# Generates a crisp, 15-second animated GIF/SVG demo for GitHub README.
-# Install VHS: brew install vhs / pkg install vhs / go install github.com/charmbracelet/vhs@latest
-# Run: vhs demo.tape
+# Generates a crisp animated GIF/MP4 demo for GitHub README & Socials.
 # ============================================================================
 
 Output demo.gif
-Output demo.svg
+Output demo.mp4
 
 Set FontSize 16
 Set Width 900

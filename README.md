@@ -44,7 +44,9 @@
 └───────────────────────────────────────┘  └───────────────────────────────────────┘
 ```
 
-> **Record this demo yourself:** Run `vhs demo.tape` using [Charm VHS](https://github.com/charmbracelet/vhs) to generate an animated demo GIF.
+<p align="center">
+  <img src="demo.gif" alt="FoxVC Live Terminal Execution & Standalone Native Compilation Demo" width="880">
+</p>
 
 ---
 
