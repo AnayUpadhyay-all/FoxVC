@@ -1,0 +1,17 @@
+{
+  "name": "FoxVC Studio",
+  "short_name": "FoxVC",
+  "description": "Local, offline programming environment for FoxVC on Android",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#e05a1b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23121212'/><text x='50' y='65' font-size='50' text-anchor='middle'>🦊</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

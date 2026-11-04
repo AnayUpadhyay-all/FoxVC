@@ -6,8 +6,7 @@ Defines metadata, diagnostics, reporting structures, and execution results.
 from typing import Optional, List, Dict, Any, Callable
 from dataclasses import dataclass, field
 
-FOXVC_LANGUAGE_VERSION = "0.5.1"
-FOXVC_RUNTIME_VERSION = "0.5.0"
+from .version import FOXVC_LANGUAGE_VERSION, FOXVC_ENGINE_VERSION, FOXVC_RUNTIME_VERSION
 
 class FoxPack:
     def __init__(self, data: Optional[Dict[str, Any]] = None):

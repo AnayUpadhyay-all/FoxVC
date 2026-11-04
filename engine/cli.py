@@ -17,9 +17,11 @@ import textwrap
 from engine.runner import run_foxvc_project, run_foxvc_diagnostic, run_foxvc_code
 from engine.interpreter import Interpreter, FoxPack
 
-ENGINE_VERSION = "0.5.2x"
-PUBLIC_VERSION = "1.0.0"
-VERSION = f"v{PUBLIC_VERSION} (Engine: v{ENGINE_VERSION})"
+from engine.version import FOXVC_LANGUAGE_VERSION, FOXVC_ENGINE_VERSION
+
+ENGINE_VERSION = FOXVC_ENGINE_VERSION
+PUBLIC_VERSION = FOXVC_LANGUAGE_VERSION
+VERSION = f"{PUBLIC_VERSION} (Engine: v{ENGINE_VERSION})"
 
 # ============================================================================
 # True Terminal Themes (OSC Background/Foreground sequences + ANSI Colors)
@@ -131,6 +133,7 @@ def show_cli_help():
   {t['primary']}run <file.fox>{RESET}          Execute a FoxVC script directly ⚡
   {t['primary']}compile <file.fox>{RESET}      Compile to fast binary AOT bytecode (.foxc) ⚡
   {t['primary']}build <file.fox> [-o bin]{RESET} Build standalone native executable binary 📦
+  {t['primary']}mobile [port]{RESET}           Launch local Mobile Studio for Android & iOS 📱
 
 {t['accent']}Den Sandbox & Interactive Tools:{RESET}
   {t['primary']}exercise{RESET}                 First interactive greeting exercise for beginners 🎓
@@ -566,7 +569,7 @@ def main():
     cmd = args[0].lower()
 
     if cmd in ("-v", "--version", "version"):
-        print(f"FoxVC Engine v{VERSION}")
+        print(f"FoxVC v{VERSION}")
         return
 
     if cmd in ("-h", "--help", "help"):
@@ -576,6 +579,41 @@ def main():
     if cmd in ("exercise", "tutorial", "start", "learn"):
         from engine.exercise import run_beginner_exercise
         run_beginner_exercise()
+        return
+
+    if cmd in ("mobile", "studio", "web"):
+        use_gui = (cmd == "studio") and ("--web" not in args) and ("--mobile" not in args)
+        if use_gui:
+            try:
+                import tkinter
+                from studio.app import main as studio_main
+                studio_main()
+                return
+            except (ImportError, Exception):
+                pass  # Fall back to web/mobile studio
+
+        from studio.web_studio import run_server, PORT
+        port = PORT
+        for a in args[1:]:
+            if a.isdigit():
+                port = int(a)
+                break
+
+        # Auto-launch browser if on Android Termux or desktop Linux/macOS
+        import shutil
+        launcher = shutil.which("termux-open-url") or shutil.which("xdg-open")
+        if launcher:
+            import threading, time
+            def _open():
+                time.sleep(1.0)
+                try:
+                    subprocess.run([launcher, f"http://localhost:{port}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                except Exception:
+                    pass
+            threading.Thread(target=_open, daemon=True).start()
+
+        network_mode = ("--network" in args) or ("--mobile" in args) or (cmd == "mobile")
+        run_server(host="0.0.0.0" if network_mode else "127.0.0.1", port=port, network=network_mode)
         return
 
     if cmd == "check":
@@ -594,18 +632,60 @@ def main():
 
     if cmd == "build":
         if len(args) < 2:
-            print("Error: Expected file path. Usage: foxvc build <file.fox> [-o output_binary]", file=sys.stderr)
+            print("Error: Expected file path. Usage: foxvc build <file.fox> [-o output_binary] [--emit-c] [--raylib] [-O 2] [-v]", file=sys.stderr)
             sys.exit(1)
         src = args[1]
+        if not validate_fox_extension(src):
+            print(f"Error: Refusing to build '{src}'. FoxVC only compiles .fox files.", file=sys.stderr)
+            sys.exit(1)
+
         out_name = None
         if "-o" in args:
             o_idx = args.index("-o")
             if o_idx + 1 < len(args):
                 out_name = args[o_idx + 1]
-        from engine.builder import build_standalone_binary
-        bin_path = build_standalone_binary(src, out_name)
-        print(f"📦 Successfully built standalone native executable: {bin_path}")
-        sys.exit(0)
+        elif "--output" in args:
+            o_idx = args.index("--output")
+            if o_idx + 1 < len(args):
+                out_name = args[o_idx + 1]
+
+        emit_c = "--emit-c" in args
+        raylib = "--raylib" in args
+        verbose = "-v" in args or "--verbose" in args
+
+        opt_level = "2"
+        if "-O" in args:
+            o_idx = args.index("-O")
+            if o_idx + 1 < len(args):
+                opt_level = args[o_idx + 1]
+
+        from engine.builder import StandaloneCompiler, BuildError
+        try:
+            compiler = StandaloneCompiler()
+            res = compiler.build(
+                source_path=src,
+                output_path=out_name,
+                emit_c=emit_c,
+                opt_level=opt_level,
+                raylib=raylib,
+                verbose=verbose
+            )
+            size_kb = res.binary_size_bytes / 1024
+            if emit_c:
+                print(f"📄 Successfully generated standalone C source: {res.output_path} ({size_kb:.1f} KB)")
+            else:
+                rel_path = os.path.relpath(res.output_path)
+                prefix = "" if rel_path.startswith(".") else "./"
+                print(f"📦 Successfully built standalone native executable: {res.output_path} ({size_kb:.1f} KB)")
+                print(f"⚡ Zero-dependency standalone binary compiled with {res.compiler_used}")
+                print(f"🚀 Run it directly: {prefix}{rel_path}")
+            sys.exit(0)
+        except BuildError as be:
+            print(f"Build Error: {str(be)}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Compilation Error: {str(e)}", file=sys.stderr)
+            sys.exit(1)
 
     if cmd == "run":
         if len(args) < 2:

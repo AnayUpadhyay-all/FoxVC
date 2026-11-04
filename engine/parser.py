@@ -214,15 +214,21 @@ class ParserError(Exception):
 
     @classmethod
     def set_source(cls, source: str):
+        # Kept as safe compatibility method; instance-level parser state is authoritative
         cls.SOURCE_LINES = source.splitlines() if source else []
 
-    def __init__(self, message: str, line: int = 0, column: int = 0, source_line: str = ''):
+    def __init__(self, message: str, line: int = 0, column: int = 0, source_line: str = '', filename: Optional[str] = None):
         self.message = message
         self.line = line
         self.column = column
+        self.filename = filename
+        self.source_line = source_line
         if not source_line and self.SOURCE_LINES and 1 <= line <= len(self.SOURCE_LINES):
             source_line = self.SOURCE_LINES[line - 1]
-        msg = f"Parser Error [Line {line}, Col {column}]: {message}"
+            self.source_line = source_line
+
+        file_part = f"[{filename}] " if filename else ""
+        msg = f"Parser Error {file_part}[Line {line}, Col {column}]: {message}"
         if source_line:
             pointer = ' ' * max(0, column - 1) + '^'
             msg = chr(10).join([msg, '    ' + source_line.strip(), '    ' + pointer])
@@ -231,11 +237,20 @@ class ParserError(Exception):
 
 class Parser:
     def __init__(self, tokens: List[Token], filename: str = "main.fox", source: str = ""):
-        if source:
-            ParserError.set_source(source)
         self.tokens = tokens
         self.pos = 0
         self.filename = filename
+        self.source = source
+        self.source_lines = source.splitlines() if source else []
+
+    def _error(self, message: str, tok: Optional[Token] = None) -> ParserError:
+        target_tok = tok if tok is not None else self._peek()
+        line = target_tok.line
+        col = target_tok.column
+        src_line = ""
+        if self.source_lines and 1 <= line <= len(self.source_lines):
+            src_line = self.source_lines[line - 1]
+        return ParserError(message, line, col, source_line=src_line, filename=self.filename)
 
     def _peek(self) -> Token:
         return self.tokens[self.pos] if self.pos < len(self.tokens) else self.tokens[-1]
@@ -251,7 +266,7 @@ class Parser:
         if tok.type == type_:
             self.pos += 1
             return tok
-        raise ParserError(message, tok.line, tok.column)
+        raise self._error(message, tok)
 
     def _skip_newlines(self):
         while self._peek().type == TokenType.NEWLINE:
@@ -440,8 +455,11 @@ class Parser:
 
     def _parse_fuse(self) -> FuseStatement:
         tok = self._consume(TokenType.FUSE, "Expected 'fuse'")
-        mod_tok = self._consume(TokenType.IDENTIFIER, "Expected module name")
-        return FuseStatement(mod_tok.value, tok.line, tok.column)
+        peek = self._peek()
+        if peek.type in (TokenType.IDENTIFIER, TokenType.STRING):
+            mod_tok = self._consume(peek.type, "Expected module name or path")
+            return FuseStatement(mod_tok.value, tok.line, tok.column)
+        raise self._error("Expected module identifier or string path after 'fuse'", peek)
 
     def _parse_lock(self) -> LockStatement:
         tok = self._consume(TokenType.LOCK, "Expected 'lock'")
@@ -465,6 +483,9 @@ class Parser:
     def _parse_say(self) -> SayStatement:
         tok = self._consume(TokenType.SAY, "Expected 'say'")
         expr = self._parse_expression()
+        if self._peek().type == TokenType.COMMA:
+            comma_tok = self._peek()
+            raise self._error("Commas are not used with 'say'. Pass a single expression or concatenate with '+'", comma_tok)
         return SayStatement(expr, tok.line, tok.column)
 
     def _parse_expression(self) -> ASTNode:
@@ -537,11 +558,27 @@ class Parser:
                 member_tok = self._consume(TokenType.IDENTIFIER, "Expected member name")
                 node = MemberAccess(node, member_tok.value, member_tok.line, member_tok.column)
             elif self._match(TokenType.LBRACKET):
+                bracket_tok = self.tokens[self.pos - 1]
                 self._skip_layout()
                 idx_expr = self._parse_expression()
                 self._skip_layout()
                 self._consume(TokenType.RBRACKET, "Expected ']' after index")
-                node = IndexAccess(node, idx_expr, self._peek().line, self._peek().column)
+                node = IndexAccess(node, idx_expr, bracket_tok.line, bracket_tok.column)
+            elif self._match(TokenType.LPAREN):
+                paren_tok = self.tokens[self.pos - 1]
+                args = []
+                self._skip_layout()
+                if self._peek().type != TokenType.RPAREN:
+                    args.append(self._parse_expression())
+                    self._skip_layout()
+                    while self._match(TokenType.COMMA):
+                        self._skip_layout()
+                        if self._peek().type == TokenType.RPAREN:
+                            break
+                        args.append(self._parse_expression())
+                        self._skip_layout()
+                self._consume(TokenType.RPAREN, "Expected ')'")
+                node = CallExpression(node, args, paren_tok.line, paren_tok.column)
             else:
                 break
         return node
@@ -633,4 +670,4 @@ class Parser:
             self._consume(TokenType.RPAREN, "Expected ')'")
             return expr
 
-        raise ParserError(f"Unexpected token '{tok.value}' ({tok.type.name})", tok.line, tok.column)
+        raise self._error(f"Unexpected token '{tok.value}' ({tok.type.name})", tok)

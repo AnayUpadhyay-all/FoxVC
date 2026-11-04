@@ -5,6 +5,7 @@ Provides secure local mobile and browser-based coding environment with execution
 
 import http.server
 import socketserver
+import socket
 import json
 import os
 import sys
@@ -21,10 +22,23 @@ from engine.runner import run_foxvc
 PORT = 8080
 HOST = "127.0.0.1"
 
+def get_local_network_ip() -> str:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+LOCAL_IP = get_local_network_ip()
+
 ALLOWED_ORIGINS = {
     f"http://127.0.0.1:{PORT}",
     f"http://localhost:{PORT}",
     f"http://[::1]:{PORT}",
+    f"http://{LOCAL_IP}:{PORT}",
 }
 
 SANDBOX_WORKSPACE = os.path.join(tempfile.gettempdir(), "foxvc_web_sandbox")
@@ -56,11 +70,11 @@ class FoxVCWebHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/api/run":
             origin = self.headers.get("Origin")
-            if origin and origin not in ALLOWED_ORIGINS:
+            if not origin or origin not in ALLOWED_ORIGINS:
                 self.send_response(403)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(b'{"success": false, "error": "Forbidden: Untrusted Origin", "output": ""}')
+                self.wfile.write(b'{"success": false, "error": "Forbidden: Missing or Untrusted Origin", "output": ""}')
                 return
 
             try:
@@ -113,6 +127,7 @@ class FoxVCWebHandler(http.server.BaseHTTPRequestHandler):
             "/": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
             "/index.html": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
             "/studio/mobile_studio.html": os.path.join(REPO_ROOT, "studio", "mobile_studio.html"),
+            "/manifest.json": os.path.join(REPO_ROOT, "studio", "manifest.json"),
             "/studio/web/visual_builder.js": os.path.join(REPO_ROOT, "studio", "web", "visual_builder.js"),
         }
 
@@ -146,13 +161,30 @@ class FoxVCWebHandler(http.server.BaseHTTPRequestHandler):
         self.send_error(404, "File not found")
 
 
-def run_server(host=HOST, port=PORT):
+def run_server(host=None, port=PORT, network=False):
+    if network or "--network" in sys.argv or "--mobile" in sys.argv:
+        bind_host = "0.0.0.0"
+        network = True
+    else:
+        bind_host = host or HOST
+
     socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer((host, port), FoxVCWebHandler) as httpd:
-        print(f"FoxVC Web Studio securely serving on http://{host}:{port} (Loopback only)...")
+    with socketserver.TCPServer((bind_host, port), FoxVCWebHandler) as httpd:
+        print("=" * 65)
+        print("          🦊 FOXVC MOBILE & WEB STUDIO ONLINE")
+        print("=" * 65)
+        if network or bind_host == "0.0.0.0":
+            print(f" 📱 Mobile Phone (Local Wi-Fi): http://{LOCAL_IP}:{port}")
+            print(f" 💻 Computer Browser:           http://localhost:{port}")
+        else:
+            print(f" 💻 Secure Local Loopback:     http://{bind_host}:{port}")
+            print(f" (Pass '--network' or '--mobile' to allow phone connections on Wi-Fi)")
+        print("=" * 65)
+        print("Press Ctrl+C to stop server.\n")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
+            print("\nShutting down Web Studio.")
             httpd.server_close()
 
 

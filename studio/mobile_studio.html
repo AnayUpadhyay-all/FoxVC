@@ -2,39 +2,297 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>FoxVC Mobile Studio</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#e05a1b">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        body { margin: 0; background: #121212; color: #d4d4d4; font-family: monospace; padding: 12px; }
-        header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #e05a1b; padding-bottom: 8px; }
-        h1 { margin: 0; font-size: 1.2rem; color: #e05a1b; }
-        textarea { width: 100%; height: 260px; background: #1a1a1a; color: #ffffff; border: 1px solid #333; padding: 8px; font-size: 1rem; border-radius: 4px; box-sizing: border-box; }
-        button { background: #e05a1b; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-top: 8px; }
-        #output { margin-top: 12px; background: #0e0e0e; color: #4ec9b0; padding: 10px; border-radius: 4px; min-height: 100px; white-space: pre-wrap; border: 1px solid #222; }
+        :root {
+            --bg: #0d0d11;
+            --surface: #15151c;
+            --border: #262633;
+            --primary: #e05a1b;
+            --primary-hover: #f06a2b;
+            --text: #e6e6ed;
+            --text-dim: #8a8a9e;
+            --code-bg: #111117;
+            --out-bg: #09090d;
+            --success: #34d399;
+            --error: #f87171;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
+            margin-bottom: 10px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .badge {
+            font-size: 0.7rem;
+            background: rgba(224, 90, 27, 0.15);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .preset-bar {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+            scrollbar-width: none;
+        }
+        .preset-btn {
+            background: var(--surface);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .preset-btn:active {
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .quick-keys {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            padding: 4px 0;
+            margin-bottom: 6px;
+            scrollbar-width: none;
+        }
+        .key-btn {
+            background: #1c1c26;
+            color: #d1d1e0;
+            border: 1px solid var(--border);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .key-btn:active {
+            background: var(--primary);
+            color: #fff;
+        }
+        textarea {
+            width: 100%;
+            height: 240px;
+            background: var(--code-bg);
+            color: #f3f3f7;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            resize: vertical;
+            tab-size: 4;
+            outline: none;
+        }
+        textarea:focus {
+            border-color: var(--primary);
+        }
+        .action-bar {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .run-btn {
+            flex: 2;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            font-weight: 800;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(224, 90, 27, 0.3);
+        }
+        .run-btn:active {
+            background: var(--primary-hover);
+        }
+        .sec-btn {
+            flex: 1;
+            background: var(--surface);
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .sec-btn:active {
+            color: #fff;
+        }
+        .out-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        #output {
+            background: var(--out-bg);
+            color: var(--success);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            min-height: 110px;
+            max-height: 250px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .out-err { color: var(--error) !important; }
     </style>
 </head>
 <body>
     <header>
-        <h1>🦊 FoxVC Studio</h1>
+        <div class="brand">
+            <span>🦊 FoxVC</span>
+            <span class="badge">Mobile</span>
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-dim);">Offline Local Engine</div>
     </header>
-    <p>Minimalist, deterministic interactive programming environment.</p>
-    <textarea id="code">call shelf "mathx"
-shelf "physics"
-distance = 120
-time = 8
-speed = distance / time
-f = force(50, 2)
-say "Speed: " + speed
-say "Force: " + f
-say "FoxVC Mobile Engine Connected!"</textarea>
-    <br>
-    <button onclick="runCode()">⚡ Execute (F5)</button>
-    <div id="output">Output will appear here...</div>
+
+    <!-- Preset Templates -->
+    <div class="preset-bar">
+        <button class="preset-btn" onclick="loadPreset('hello')">👋 Hello</button>
+        <button class="preset-btn" onclick="loadPreset('math')">🧮 Math</button>
+        <button class="preset-btn" onclick="loadPreset('act')">⚡ Function</button>
+        <button class="preset-btn" onclick="loadPreset('loop')">🔄 Loop</button>
+    </div>
+
+    <!-- Quick Keyboard Access Toolbar for Touch Devices -->
+    <div class="quick-keys">
+        <button class="key-btn" onclick="insertSnippet('    ')">Tab</button>
+        <button class="key-btn" onclick="insertSnippet('lock ')">lock</button>
+        <button class="key-btn" onclick="insertSnippet('act ')">act</button>
+        <button class="key-btn" onclick="insertSnippet('emit ')">emit</button>
+        <button class="key-btn" onclick="insertSnippet('say ')">say</button>
+        <button class="key-btn" onclick="insertSnippet(' = ')">=</button>
+        <button class="key-btn" onclick="insertSnippet(' + ')">+</button>
+        <button class="key-btn" onclick="insertSnippet('\"')">&quot;&quot;</button>
+        <button class="key-btn" onclick="insertSnippet('(')">(</button>
+        <button class="key-btn" onclick="insertSnippet(')')">)</button>
+    </div>
+
+    <textarea id="code" spellcheck="false" placeholder="Write FoxVC code here..."># FoxVC Local Mobile Script
+lock greeting = "Hello from Android!"
+say greeting
+
+act add(a, b)
+    emit a + b
+
+lock total = add(40, 2)
+say "Result: " + total</textarea>
+
+    <div class="action-bar">
+        <button class="run-btn" id="runBtn" onclick="runCode()">⚡ RUN SCRIPT</button>
+        <button class="sec-btn" onclick="clearOutput()">Clear</button>
+    </div>
+
+    <div class="out-header">
+        <span>Terminal Output</span>
+        <span id="statusBadge" style="color: var(--text-dim);">Ready</span>
+    </div>
+    <div id="output">Run a script to view output...</div>
+
     <script>
+        const PRESETS = {
+            hello: `# Hello World in FoxVC\nlock msg = "Welcome to FoxVC on Android!"\nsay msg\n`,
+            math: `# Arithmetic & Calculations\nlock a = 25\nlock b = 4\nlock prod = a * b\nlock div = a / b\nsay "Product: " + prod\nsay "Division: " + div\n`,
+            act: `# Functions (act) & Returns (emit)\nact square(n)\n    emit n * n\n\nlock val = square(9)\nsay "9 squared = " + val\n`,
+            loop: `# Loops (spin)\nlock count = 1\nspin count <= 5\n    say "Count: " + count\n    count = count + 1\nsay "Finished!"\n`
+        };
+
+        const editor = document.getElementById('code');
+        const out = document.getElementById('output');
+        const status = document.getElementById('statusBadge');
+
+        function loadPreset(name) {
+            if (PRESETS[name]) {
+                editor.value = PRESETS[name];
+                editor.focus();
+            }
+        }
+
+        function insertSnippet(text) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const cur = editor.value;
+            editor.value = cur.substring(0, start) + text + cur.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + text.length;
+            editor.focus();
+        }
+
+        // Tab key support
+        editor.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                insertSnippet('    ');
+            }
+        });
+
+        function clearOutput() {
+            out.textContent = "Run a script to view output...";
+            out.className = "";
+            status.textContent = "Ready";
+            status.style.color = "var(--text-dim)";
+        }
+
         async function runCode() {
-            const code = document.getElementById('code').value;
-            const out = document.getElementById('output');
+            const code = editor.value;
             out.textContent = "Executing...";
+            out.className = "";
+            status.textContent = "Running";
+            status.style.color = "var(--primary)";
+
             try {
                 const res = await fetch('/api/run', {
                     method: 'POST',
@@ -43,12 +301,21 @@ say "FoxVC Mobile Engine Connected!"</textarea>
                 });
                 const data = await res.json();
                 if (data.success) {
-                    out.textContent = data.output || "Execution succeeded with no stdout.";
+                    out.textContent = data.output || "(Execution completed with no printed output)";
+                    out.className = "";
+                    status.textContent = "Success";
+                    status.style.color = "var(--success)";
                 } else {
-                    out.textContent = "ERROR: " + (data.error || "Unknown error");
+                    out.textContent = "Error:\n" + (data.error || "Unknown error occurred");
+                    out.className = "out-err";
+                    status.textContent = "Failed";
+                    status.style.color = "var(--error)";
                 }
             } catch (err) {
-                out.textContent = "Client error: " + err.message;
+                out.textContent = "Connection error: " + err.message + "\nMake sure FoxVC local host is running.";
+                out.className = "out-err";
+                status.textContent = "Network Error";
+                status.style.color = "var(--error)";
             }
         }
     </script>

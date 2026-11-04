@@ -501,8 +501,8 @@ class VisualLearningMode {
       else if (b.type === 'bounce') lines.push(`    bounce ${b.params.val || 0.8}`);
       else if (b.type === 'state') lines.push(`state ${b.params.var || 'val'} = ${b.params.val || 0}`);
       else if (b.type === 'say') lines.push(`say "${b.params.msg || 'Done'}"`);
-      else if (b.type === 'on_tick') { lines.push('on tick do'); lines.push('    say "Tick active"'); lines.push('done'); }
-      else if (b.type === 'on_key') { lines.push(`on key "${b.params.key || 'Space'}" do`); lines.push(`    say "Key ${b.params.key} hit"`); lines.push('done'); }
+      else if (b.type === 'on_tick') { lines.push('pulse 60'); lines.push('    say "Tick active"'); }
+      else if (b.type === 'on_key') { lines.push(`say "Key ${b.params.key || 'Space'} hit"`); }
     }
 
     const payloadCode = lines.join('\n');

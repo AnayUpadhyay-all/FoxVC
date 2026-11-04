@@ -196,6 +196,54 @@ emit res.ok
         handler2.do_GET()
         self.assertEqual(handler2._response_code, 404)
 
+    # 7. Web Studio Missing Origin Protection
+    def test_web_studio_missing_origin_rejected(self):
+        handler = DummyWebHandler(
+            method="POST",
+            path="/api/run",
+            headers={
+                "Content-Length": "18"
+            },
+            body=b'{"code": "emit 42"}'
+        )
+        handler.do_POST()
+        self.assertEqual(handler._response_code, 403)
+        self.assertIn("Missing or Untrusted Origin", handler.wfile.getvalue().decode())
+
+    # 8. Execution Timeout Enforcement
+    def test_execution_timeout_enforced(self):
+        # Infinite spin loop must abort when timeout is set
+        code = """
+spin aye
+    x = 1
+"""
+        res = run_foxvc(code, engine_mode="interp", timeout=0.3, as_result=True)
+        self.assertFalse(res.success)
+        self.assertIn("timed out", str(res.error).lower())
+
+    # 9. Outbound Network Loopback Isolation in Sandbox
+    def test_outbound_loopback_blocked_in_sandbox(self):
+        get_fn = self.shelf["httpGet"]
+        res = get_fn("http://127.0.0.1:8080/secret")
+        self.assertEqual(res["ok"], 0)
+        self.assertIn("PermissionDenied", res["error"])
+
+    # 10. Symlink Path Traversal Prevention
+    def test_symlink_path_traversal_blocked(self):
+        outside_file = os.path.join(tempfile.gettempdir(), "outside_target.txt")
+        with open(outside_file, "w") as f:
+            f.write("SECRET_HOST_DATA")
+        try:
+            link_path = os.path.join(self.temp_dir, "symlink_escape.txt")
+            os.symlink(outside_file, link_path)
+
+            read_fn = self.shelf["readFile"]
+            content = read_fn(link_path)
+            self.assertEqual(content, "", "Reading symlink escaping sandbox must return empty string")
+        finally:
+            if os.path.exists(outside_file):
+                os.remove(outside_file)
+
 
 if __name__ == '__main__':
     unittest.main()

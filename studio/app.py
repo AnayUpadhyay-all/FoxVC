@@ -8,13 +8,23 @@ import os
 import sys
 import time
 import re
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog, messagebox
+    HAS_TKINTER = True
+    CanvasBase = tk.Canvas
+except (ImportError, ModuleNotFoundError):
+    HAS_TKINTER = False
+    tk = None
+    ttk = None
+    filedialog = None
+    messagebox = None
+    CanvasBase = object
 
 import engine.runtime as rt
 from engine.runner import run_foxvc, run_foxvc_diagnostic
 
-class LineNumbers(tk.Canvas):
+class LineNumbers(CanvasBase):
     def __init__(self, parent, text_widget, **kwargs):
         super().__init__(parent, **kwargs)
         self.text_widget = text_widget
@@ -104,7 +114,12 @@ class Stage2DWindow(tk.Toplevel):
         self.after(50, loop)
 
 class FoxVCStudio:
-    def __init__(self, root: tk.Tk, initial_file: str = None):
+    def __init__(self, root: Any, initial_file: str = None):
+        if not HAS_TKINTER:
+            raise RuntimeError(
+                "Fox Den Studio desktop GUI requires Tkinter, which is not available in this environment. "
+                "Use 'foxvc studio --web' to run the Web Studio or install python3-tk."
+            )
         self.root = root
         self.documents = []
         self.active_doc_idx = -1
@@ -127,12 +142,12 @@ class FoxVCStudio:
             if os.path.isfile(abs_p): self.open_file_path(abs_p)
             else: self.new_file()
         else:
-            sample = os.path.join(base_dir, "examples", "KinematicSolarSystem.fox")
+            sample = os.path.join(base_dir, "examples", "hello.fox")
             if os.path.exists(sample): self.open_file_path(sample)
             else: self.new_file()
 
     def _init_window(self):
-        self.root.title(f"FoxVC Studio — Engine v{rt.FOXVC_LANGUAGE_VERSION}")
+        self.root.title(f"Fox Den Studio — Engine v{rt.FOXVC_ENGINE_VERSION} (Lang v{rt.FOXVC_LANGUAGE_VERSION})")
         self.root.geometry("1160x820")
         self.root.minsize(840, 580)
         self.root.configure(bg="#080707")
@@ -259,18 +274,20 @@ class FoxVCStudio:
 
     def _configure_syntax_tags(self):
         self.editor.tag_configure("kw", foreground=self.c_accent, font=("Monospace", 10, "bold"))
-        self.editor.tag_configure("spatial_kw", foreground="#38BDF8", font=("Monospace", 10, "bold"))
+        self.editor.tag_configure("builtin_kw", foreground="#38BDF8", font=("Monospace", 10, "bold"))
         self.editor.tag_configure("num", foreground="#F59E0B")
         self.editor.tag_configure("str", foreground="#86EFAC")
         self.editor.tag_configure("comment", foreground="#5E564F", font=("Monospace", 10, "italic"))
 
     def _apply_syntax_highlighting(self):
         code = self.editor.get("1.0", tk.END)
-        for tag in ("kw", "spatial_kw", "num", "str", "comment"):
+        for tag in ("kw", "builtin_kw", "num", "str", "comment"):
             self.editor.tag_remove(tag, "1.0", tk.END)
 
-        spatial_keywords = r"\b(space|entity|form|anchor|anchored_to|inside|beside|around|aligned|replicate|connect|span|distributed|period|orbit|pulse|spin|wave|phase|cycle|linear|radial|field)\b"
-        core_keywords = r"\b(say|ask|set|add|render|bind|mount|element|use|skin|apply|action|state|fetch|timer|navigate|store|hide|show|enable|disable|remove|true|false|and|or|not)\b"
+        # Official 25 FoxVC keywords
+        fox_keywords = r"\b(act|emit|pack|mold|pick|alt|otherwise|pulse|cycle|spin|halt|skip|say|ask|guard|trap|fuse|lock|shift|blank|aye|nay|also|either|deny)\b"
+        # Standard library shelves and built-in collection / math primitives
+        builtin_names = r"\b(push|pop|remove_at|sin|cos|sqrt|rnd|time|len|str|int|float|shelf|math|system|file|crypto|net|db|graphics)\b"
 
         for m in re.finditer(r'"[^"\\]*(?:\\.[^"\\]*)*"', code):
             self.editor.tag_add("str", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
@@ -278,11 +295,11 @@ class FoxVCStudio:
         for m in re.finditer(r"\b\d+(?:\.\d+)?\b", code):
             self.editor.tag_add("num", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
 
-        for m in re.finditer(core_keywords, code, re.IGNORECASE):
+        for m in re.finditer(fox_keywords, code):
             self.editor.tag_add("kw", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
 
-        for m in re.finditer(spatial_keywords, code, re.IGNORECASE):
-            self.editor.tag_add("spatial_kw", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
+        for m in re.finditer(builtin_names, code):
+            self.editor.tag_add("builtin_kw", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
 
         for m in re.finditer(r"#[^\n]*", code):
             self.editor.tag_add("comment", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")
@@ -347,7 +364,17 @@ class FoxVCStudio:
         else: self.switch_tab(max(0, idx - 1))
 
     def new_file(self):
-        doc = DocumentTab(filepath=None, title="world.fox", content='space NewVisualWorld\n    background "#080B12"\n\n    entity Core\n        form circle\n        diameter 80\n        fill "#FF7A00"\n        pulse min 0.9 max 1.1 period 2.0\n\n    entity Satellite\n        form circle\n        diameter 20\n        fill "#38BDF8"\n        around Core distance 150 period 4.0\n')
+        starter = (
+            "# FoxVC Starter Program\n"
+            "lock greeting = \"Welcome to Fox Den Studio!\"\n"
+            "say greeting\n\n"
+            "act calculate(a, b)\n"
+            "    lock sum = a + b\n"
+            "    emit sum\n\n"
+            "lock total = calculate(15, 27)\n"
+            "say \"Result: \" + total\n"
+        )
+        doc = DocumentTab(filepath=None, title="untitled.fox", content=starter)
         self.documents.append(doc)
         self.switch_tab(len(self.documents) - 1)
 
@@ -387,7 +414,7 @@ class FoxVCStudio:
                 node = self.file_tree.insert(parent, "end", text=f"📁 {i}", values=[fp, "dir"])
                 self._populate_tree(node, fp)
             else:
-                icon = "🦊" if i.endswith((".fox", ".fweb", ".fskin", ".flogic")) else "📄"
+                icon = "🦊" if i.endswith((".fox", ".foxc")) else "📄"
                 self.file_tree.insert(parent, "end", text=f"{icon} {i}", values=[fp, "file"])
 
     def _on_tree_click(self, event=None):
@@ -486,6 +513,10 @@ class FoxVCStudio:
         messagebox.showinfo("FoxVC Web", "Web Studio is available via 'python3 run_web.py'.")
 
 def main():
+    if not HAS_TKINTER:
+        print("Error: Fox Den Studio desktop GUI requires Tkinter, which is not available in this environment.")
+        print("Run 'foxvc studio --web' to launch the Web Studio or install python3-tk.")
+        sys.exit(1)
     root = tk.Tk()
     app = FoxVCStudio(root, sys.argv[1] if len(sys.argv) > 1 else None)
     root.mainloop()

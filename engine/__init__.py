@@ -22,4 +22,6 @@ __all__ = [
     "run_foxvc_diagnostic",
 ]
 
-__version__ = '0.5.4'
+from .version import FOXVC_LANGUAGE_VERSION, FOXVC_ENGINE_VERSION, FOXVC_RUNTIME_VERSION
+
+__version__ = FOXVC_ENGINE_VERSION

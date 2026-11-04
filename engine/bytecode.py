@@ -211,7 +211,10 @@ class BytecodeCompiler:
 
         # 6. FUNCTION & MOLD CALLS: CallExpression
         if t == "CallExpression":
-            fn_name = _extract_name(node.function)
+            if hasattr(node.function, "member") and hasattr(node.function, "obj"):
+                fn_name = f"{_extract_name(node.function.obj)}.{node.function.member}"
+            else:
+                fn_name = _extract_name(node.function)
             dest_reg = self.alloc_reg()
 
             # Dedicated Native Timer Hook
@@ -682,6 +685,25 @@ class FoxVM:
 
                 elif op == Op.CALL:
                     dest_reg, fn_name, arg_regs = inst[1], inst[2], inst[3]
+                    # Check for qualified member call (e.g. math.add or obj.method)
+                    if isinstance(fn_name, str) and "." in fn_name:
+                        parts = fn_name.split(".", 1)
+                        root_obj = self.globals.get(parts[0])
+                        if hasattr(root_obj, "_data") and parts[1] in root_obj._data:
+                            target_fn = root_obj[parts[1]]
+                            if callable(target_fn):
+                                args = [regs[r] for r in arg_regs]
+                                regs[dest_reg] = target_fn(*args)
+                                self.ip += 1
+                                continue
+                        elif isinstance(root_obj, dict) and parts[1] in root_obj:
+                            target_fn = root_obj[parts[1]]
+                            if callable(target_fn):
+                                args = [regs[r] for r in arg_regs]
+                                regs[dest_reg] = target_fn(*args)
+                                self.ip += 1
+                                continue
+
                     # 1. Check if it is a Mold blueprint instantiation (e.g. Player())
                     if fn_name in self.molds:
                         instance = dict(self.molds[fn_name])
@@ -767,24 +789,15 @@ class FoxVM:
 
                 elif op == Op.FUSE_MODULE:
                     mod_name = inst[1]
-                    mod_file = mod_name if mod_name.endswith(".fox") else f"{mod_name}.fox"
-                    if os.path.exists(mod_file):
-                        from engine.lexer import Lexer
-                        from engine.parser import Parser
-                        with open(mod_file, "r", encoding="utf-8") as mf:
-                            mod_src = mf.read()
-                        mod_ast = Parser(Lexer(mod_src).tokenize(), source=mod_src).parse()
-                        sub_comp = BytecodeCompiler()
-                        sub_pkg = sub_comp.compile(mod_ast)
-                        sub_code = sub_pkg[0]
-                        sub_funcs = sub_pkg[1]
-                        sub_lines = sub_pkg[2] if len(sub_pkg) > 2 else {}
-                        self.functions.update(sub_funcs)
-                        sub_vm = FoxVM()
-                        sub_vm.functions = self.functions
-                        sub_vm.globals = self.globals
-                        sub_vm.molds = self.molds
-                        sub_vm.run((sub_code, self.functions, sub_lines))
+                    from engine.modules import ModuleManager
+                    mod_mgr = getattr(self, "module_manager", None)
+                    if mod_mgr is None:
+                        mod_mgr = ModuleManager()
+                        self.module_manager = mod_mgr
+                    mod_pack = mod_mgr.load_module(mod_name, importing_file=getattr(self, "active_file", "main.fox"))
+                    raw_name = str(mod_name).replace("\\", "/")
+                    base_name = os.path.splitext(os.path.basename(raw_name))[0]
+                    self.globals[base_name] = mod_pack
 
                 elif op == Op.EMIT:
                     last_emitted = regs[inst[1]]

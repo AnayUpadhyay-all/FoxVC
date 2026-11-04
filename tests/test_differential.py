@@ -87,6 +87,15 @@ emit total
         # 0 + 1 + 2 + 3 + 4 = 10
         self._assert_three_way_match(code, 10.0, "Cycle loop accumulation")
 
+    def test_list_creation_and_indexing(self):
+        code = """
+nums = [10, 20, 30]
+nums[1] = 99
+emit nums[1] + nums[0]
+"""
+        # 99 + 10 = 109
+        self._assert_three_way_match(code, 109.0, "List creation and indexing mutation")
+
     # =========================================================================
     # Higher-Level Features: 2-Way Differential Tests (Interp == VM)
     # =========================================================================

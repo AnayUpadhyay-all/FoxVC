@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 import os
 import time
 from .shelf import get_standard_shelf
+from .modules import ModuleManager, ModuleError
 
 
 class RuntimeError(Exception):
@@ -136,11 +137,14 @@ class Interpreter:
         'max': lambda *args: max(args[0]) if len(args) == 1 and hasattr(args[0], '__iter__') else max(*args),
         'type': lambda x: type(x).__name__,
     }
-    def __init__(self, policy: Optional[Any] = None, sandboxed: bool = False, allowed_dir: Optional[str] = None, input_source: Optional[Any] = None):
+    def __init__(self, policy: Optional[Any] = None, sandboxed: bool = False, allowed_dir: Optional[str] = None, input_source: Optional[Any] = None, filename: Optional[str] = "main.fox", module_manager: Optional[Any] = None, timeout: Optional[float] = None):
         self.security_policy = policy
         self.sandboxed = sandboxed
         self.allowed_dir = allowed_dir
         self.input_source = input_source
+        self.timeout = float(timeout) if timeout is not None else None
+        self.start_time = time.time()
+        self.step_counter = 0
         self.shelf = get_standard_shelf(policy=policy, sandboxed=sandboxed, allowed_dir=allowed_dir)
         self.global_env = Environment(initial=self.shelf)
         self.current_env = self.global_env
@@ -152,7 +156,8 @@ class Interpreter:
         self.locked_variables: set = set()
         self.functions: Dict[str, Any] = {}
         self.molds: Dict[str, Any] = {}
-        self.active_file: Optional[str] = "main.fox"
+        self.active_file: Optional[str] = filename or "main.fox"
+        self.module_manager = module_manager or ModuleManager()
         self.output_buffer: List[str] = []
 
 
@@ -189,6 +194,11 @@ class Interpreter:
     def _execute_statement(self, stmt: Any):
         if stmt is None:
             return None
+
+        self.step_counter += 1
+        if self.timeout is not None and (self.step_counter & 63) == 0:
+            if (time.time() - self.start_time) > self.timeout:
+                raise RuntimeError(f"Execution timed out after {self.timeout}s", getattr(stmt, "line", 1), getattr(stmt, "column", 1), self.active_file)
 
         node_name = type(stmt).__name__
 
@@ -238,14 +248,22 @@ class Interpreter:
             return None
 
         if node_name == "FuseStatement":
-            mod_path = f"{stmt.module_name}.fox"
-            if os.path.exists(mod_path):
-                from .lexer import Lexer
-                from .parser import Parser
-                with open(mod_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                sub_ast = Parser(Lexer(content, mod_path).tokenize(), mod_path).parse()
-                self.execute(sub_ast)
+            try:
+                mod_pack = self.module_manager.load_module(
+                    stmt.module_name,
+                    importing_file=self.active_file,
+                    sandboxed=self.sandboxed,
+                    allowed_dir=self.allowed_dir,
+                    security_policy=self.security_policy,
+                    line=getattr(stmt, "line", 1),
+                    column=getattr(stmt, "column", 1)
+                )
+            except Exception as me:
+                raise RuntimeError(str(me), getattr(stmt, "line", 1), getattr(stmt, "column", 1), self.active_file)
+
+            raw_name = str(stmt.module_name).replace("\\", "/")
+            base_name = os.path.splitext(os.path.basename(raw_name))[0]
+            self.variables[base_name] = mod_pack
             return None
 
         if node_name == "CycleStatement":
@@ -451,8 +469,19 @@ class Interpreter:
             raise RuntimeError(f"Undefined variable '{name}'", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
 
         if node_type == "CallExpression":
-            fn_name = node.function
             evaluated_args = [self._evaluate(a) for a in node.arguments]
+            
+            # If function is an ASTNode (such as MemberAccess or expression)
+            if not isinstance(node.function, str):
+                callee = self._evaluate(node.function)
+                if callable(callee):
+                    try:
+                        return callee(*evaluated_args)
+                    except Exception as e:
+                        raise RuntimeError(f"Call failed: {e}", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
+                raise RuntimeError(f"Expression is not callable (got {get_foxvc_type(callee)})", getattr(node, "line", 0), getattr(node, "column", 0), self.active_file)
+
+            fn_name = node.function
 
             if fn_name in self.functions:
                 fn = self.functions[fn_name]

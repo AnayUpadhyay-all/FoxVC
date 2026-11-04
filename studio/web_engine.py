@@ -7,8 +7,8 @@ Consumes client mobile CPU/GPU exclusively.
 import json
 from engine.runner import run_foxvc
 
-def execute_foxvc_source(source_code: str, profile: str = "complex") -> str:
-    res = run_foxvc(source_code, profile=profile)
+def execute_foxvc_source(source_code: str, engine_mode: str = "interp", **kwargs) -> str:
+    res = run_foxvc(source_code, engine_mode=engine_mode, as_result=True)
     if not res.success:
         return json.dumps({
             "success": False,
@@ -18,7 +18,7 @@ def execute_foxvc_source(source_code: str, profile: str = "complex") -> str:
             "background": "#080B12"
         })
 
-    scene = res.spatial_space
+    scene = getattr(res, "spatial_space", None) or res.metadata.get("spatial_space")
     if not scene:
         return json.dumps({
             "success": True,

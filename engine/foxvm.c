@@ -3,7 +3,10 @@
 #include <string.h>
 #include <time.h>
 #include <math.h>
+
+#ifdef FOX_ENABLE_RAYLIB
 #include <raylib.h>
+#endif
 
 #define MAX_REGS 256
 #define MAX_VARS 512
@@ -58,6 +61,7 @@ int allocate_pack(int initial_cap) {
     return id;
 }
 
+#ifdef FOX_ENABLE_RAYLIB
 static Color get_color_from_code(int col) {
     switch (col) {
         case 1: return ORANGE;
@@ -71,9 +75,11 @@ static Color get_color_from_code(int col) {
         default: return RAYWHITE;
     }
 }
+#endif
 
 // Generic native dispatch bridge
 double dispatch_native(const char* name, double* args, int argc) {
+#ifdef FOX_ENABLE_RAYLIB
     if (strcmp(name, "win_open") == 0) {
         int w = (argc > 0) ? (int)args[0] : 800;
         int h = (argc > 1) ? (int)args[1] : 600;
@@ -129,6 +135,7 @@ double dispatch_native(const char* name, double* args, int argc) {
         SetTargetFPS((int)args[0]);
         return 1.0;
     }
+#endif
     return 0.0;
 }
 
@@ -224,7 +231,9 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                 break;
             }
             case 17: { // HALT
+#ifdef FOX_ENABLE_RAYLIB
                 if (IsWindowReady()) CloseWindow();
+#endif
                 return regs[0];
             }
             case 18: { // GET_TIME
@@ -274,7 +283,9 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
             }
             case 22: { // EMIT
                 int s = inst[ip++];
+#ifdef FOX_ENABLE_RAYLIB
                 if (IsWindowReady()) CloseWindow();
+#endif
                 return regs[s];
             }
             case 24: { // SIN
@@ -355,6 +366,8 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                 break;
         }
     }
+#ifdef FOX_ENABLE_RAYLIB
     if (IsWindowReady()) CloseWindow();
+#endif
     return regs[0];
 }

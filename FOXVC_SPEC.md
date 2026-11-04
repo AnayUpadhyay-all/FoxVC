@@ -1,81 +1,108 @@
-# FoxVC Language & Runtime Specification (Version 0.4.0)
+# FoxVC Language & Runtime Specification
 
-FoxVC is a deterministic programming language featuring two unified native models:
-1. **Relational Entity Space (RES):** 2D visual worlds governed by topological anchors, composition, and semantic relations instead of coordinate-based drawing commands.
-2. **In-Memory Web Architecture:** Structural document models (FWEB), cascading visual rules (FSKIN), and reactive logic (FLOGIC) served in-memory over HTTP.
+**Language Specification Version:** 1.0.0  
+**Runtime Engine Version:** 0.6.0-alpha
 
-## 2D Relational Entity Space
+---
 
-### Directives:
-* `space <Identifier>`: Defines an unbounded metric visual reference plane.
-* `entity <Identifier>`: Declares a semantic visual unit with an intrinsic `form` (`circle`, `rect`, `polygon`, `arc`).
-* `anchor <name> at <cardinal> [offset <x>, <y>]`: Declares custom points of interface relative to standard cardinal landmarks.
-* `inside <Target> [at <Anchor>]`: Containment relation.
-* `anchored_to <Target.Anchor> [at <Anchor>]`: Topological contact point alignment.
-* `beside <Target> [direction <cardinal>] [spacing <N>]`: Cardinal proximity relation.
-* `around <Target> distance <D> [bearing <Angle>]`: Polar orbital relationship.
-* `connect <Name> from <A.anchor> to <B.anchor>`: Geometric connection spanning between two anchors.
-* `replicate <N> of entity <Name> distributed [linear | radial | field]`: Generative spatial replication.
+## 1. Core Language Identity & Keyword Discipline
 
-## Outbound HTTP & Networking (Standard Shelf)
+FoxVC enforces an exact 25-keyword lexicon with zero aliases or competitor overlap:
+```text
+act emit pack mold pick alt otherwise pulse cycle spin halt skip say ask guard trap fuse lock shift blank aye nay also either deny
+```
 
-FoxVC provides native network communication primitives for interacting with REST APIs, Webhooks, and external services:
+* **Official Extension:** `.fox`
+* **Boolean Literals:** `aye` (true), `nay` (false), `blank` (null/none)
+* **Logical Operators:** `also` (logical AND with short-circuit), `either` (logical OR with short-circuit), `deny` (unary logical NOT)
+* **Control Flow:** `pick ... alt ... otherwise` (conditionals), `spin` (while loop), `cycle` (counted range loop), `pulse` (delta-time continuous loop), `halt` (break), `skip` (continue)
+* **Subroutines & Blueprints:** `act` (function declaration), `emit` (value return / module export), `mold` (object/type schema)
+* **Defensive Coding:** `guard` (assertion with early exit), `trap ... otherwise` (exception catching and isolation)
 
-* `httpGet(url, [headers, timeout])`: Performs an HTTP/HTTPS GET request. Returns a `pack` with `status`, `ok`, `body`, `headers`, and `json`.
-* `httpPost(url, [body, headers, timeout])`: Performs an HTTP/HTTPS POST request. Automatically encodes JSON payloads if a pack is provided.
-* `httpPut(url, [body, headers, timeout])`: Performs an HTTP/HTTPS PUT request.
-* `httpDelete(url, [headers, timeout])`: Performs an HTTP/HTTPS DELETE request.
-* `fetch(url, [options])`: General fetch interface accepting options pack (`method`, `body`, `headers`, `timeout`).
-* `urlEncode(params)`: Encodes a pack/dictionary of parameters into a URL query string.
-* `urlDecode(string)`: Decodes a URL-encoded string.
+---
 
-## Embedded Database Engine (SQLite)
+## 2. Decoupled Versioning Architecture
 
-FoxVC provides native persistent data storage powered by SQLite:
+FoxVC strictly decouples language specification semantics from runtime engine releases:
+* **Language Version (`1.0.0`):** Authoritative specification of keywords, grammar, and AST behavior.
+* **Engine Version (`0.6.0-alpha`):** Host engine implementation version across interpreters, compilers, and Studio.
+The language version does not advance merely because engine internals change.
 
-* `dbOpen(path)`: Opens a SQLite database connection (or `":memory:"`). Returns a `pack` with `handle`, `path`, and `ok`.
-* `dbExecute(db, sql, [params])`: Executes a data definition or modification query (`CREATE`, `INSERT`, `UPDATE`, `DELETE`). Returns a `pack` with `ok`, `rows_affected`, and `last_id`.
-* `dbQuery(db, sql, [params])`: Executes a `SELECT` query and returns a `list` of `pack` row objects with named column properties.
-* `dbClose(db)`: Closes the active database connection.
+---
 
-## Production HTTP Web Server & REST API Framework
+## 3. Fuse Hybrid Module System
 
-FoxVC supports running web services and microservices directly from FoxVC code:
+FoxVC implements a hybrid module architecture combining module-local namespace isolation with explicit, controlled exports:
 
-* `httpServer(port, [host])`: Creates a new HTTP server instance bound to `host:port` (use `0` for ephemeral port).
-* `httpRoute(server, method, path, handler)`: Registers a request handler for a specific HTTP method (`GET`, `POST`, `PUT`, `DELETE`, `*`) and route path.
-* `httpResponse(body_or_json, [status, headers])`: Helper creating a structured response pack with status code and headers.
-* `httpStart(server)`: Spawns the web server in a background thread.
-* `httpStop(server)`: Gracefully stops the web server.
+### 3.1 Module Resolution
+* Modules are imported via `fuse <identifier>` or `fuse "<relative-or-canonical-path>"`.
+* Canonical resolution uses symlink-aware realpaths (`os.path.realpath`).
+* Search order:
+  1. Directory of the importing file (for relative imports `./` or `../`).
+  2. Current workspace / project root.
+  3. Configured search paths.
+* Supported file patterns: `<name>`, `<name>.fox`, and `<name>/main.fox`.
 
-## Security, Cryptography & Auth
+### 3.2 Namespace Isolation & Controlled Exports
+* **Module-Local Namespace:** Every module executes in its own isolated environment. Top-level variables, functions, and blueprints inside a module do not pollute the importer's global environment.
+* **Namespace Binding:** Imported modules are bound to their base identifier in the importer (`fuse "./utils/math"` binds to `math`).
+* **Controlled Exports via `emit`:** Internal definitions remain private by default. A module explicitly exports its public interface using top-level `emit`:
+  ```fox
+  act add(a, b)
+      emit a + b
 
-* `hashSha256(data)`: Computes the SHA-256 hex digest.
-* `hashSha512(data)`: Computes the SHA-512 hex digest.
-* `hashMd5(data)`: Computes the MD5 hex digest.
-* `hmacSha256(key, message)`: Computes HMAC-SHA256 signature for API signing and webhooks.
-* `uuid()` / `uuid4()`: Generates a cryptographically random RFC 4122 v4 UUID string.
-* `secureToken([bytes])`: Generates a cryptographically secure hex token for sessions or API keys.
-* `base64Encode(data)`: Encodes string to Base64.
-* `base64Decode(data)`: Decodes Base64 to string.
-* `hexEncode(data)` & `hexDecode(hex)`: Hexadecimal encoders.
+  emit pack {
+      add: add
+  }
+  ```
+* **Member Access:** Callers invoke exported acts via member access: `math.add(10, 20)`. Accessing unexported private identifiers is rejected with a runtime error.
+* **Cycle Detection:** Recursive circular imports (`A -> B -> A`) are detected dynamically and safely rejected before execution deadlocks.
+* **Single Execution:** Modules are cached by their canonical identity and executed only once.
 
-## System, Environment & Process Execution
+---
 
-* `getEnv(key, [default])`: Reads environment variables.
-* `setEnv(key, value)`: Sets environment variables.
-* `listEnv()`: Returns all environment variables as a `pack`.
-* `execCmd(command, [timeout])`: Executes a shell command and returns `pack { ok, exit_code, stdout, stderr }`.
-* `platform()`: Returns host OS platform (e.g. `"linux"`, `"darwin"`, `"win32"`).
-* `cpuCount()`: Returns number of available logical CPU cores.
-* `makeDir(path)` & `removeDir(path)`: Recursive directory creation and removal.
-* `absPath(path)`: Resolves absolute path.
-* `fileSize(path)`: Returns file size in bytes.
+## 4. Standard Library Modularization (`engine/shelves/`)
 
-## Concurrency & Background Tasks
+The standard library is organized into domain-specific shelves with lazy loading and a unified compatibility facade:
 
-* `spawn(fn, ...args)`: Dispatches a function or act to execute asynchronously in the background thread pool.
-* `awaitTask(task_handle, [timeout])`: Awaits task completion and returns the result value.
+* `engine/shelves/common.py`: Universal collections (`pack`, `push`, `pop`, `remove_at`, `len`), conversion helpers, and `SecurityPolicy`.
+* `engine/shelves/math.py`: Trigonometry (`sin`, `cos`, `tan`), arithmetic primitives (`sqrt`, `floor`, `ceil`, `abs`, `round`, `pi`), game math (`clamp`, `lerp`, `distance`, `rectCollides`, `circleCollides`, `pointInRect`, `random`, `randomInt`, `randomChoice`).
+* `engine/shelves/graphics.py`: Raylib 2D hardware windowing and input (`openWindow`, `closeWindow`, `startFrame`, `endFrame`, `drawBox`, `drawCircle`, `drawLine`, `drawText`, `isKeyDown`, `mouseX`, `mouseY`, `mouseDown`). **Graphics initialization is strictly lazy**, loading native libraries only upon invocation.
+* `engine/shelves/file.py`: Filesystem I/O (`readFile`, `writeFile`, `appendFile`, `fileExists`, `removeFile`, `listDir`, `makeDir`, `removeDir`, `absPath`, `fileSize`), JSON serialization (`jsonParse`, `jsonString`), and string utilities (`split`, `join`, `trim`, `replace`, `upper`, `lower`, `contains`, `startsWith`, `endsWith`).
+* `engine/shelves/crypto.py`: Hashing (`hashSha256`, `hashSha512`, `hashMd5`, `hmacSha256`), token and UUID generation (`uuid`, `secureToken`), and binary encoders (`base64Encode`, `base64Decode`, `hexEncode`, `hexDecode`).
+* `engine/shelves/net.py`: REST client (`httpGet`, `httpPost`, `httpPut`, `httpDelete`, `fetch`, `urlEncode`, `urlDecode`) and microservice HTTP server (`httpServer`, `httpRoute`, `httpResponse`, `httpStart`, `httpStop`).
+* `engine/shelves/db.py`: Embedded SQLite database (`dbOpen`, `dbExecute`, `dbQuery`, `dbClose`).
+* `engine/shelves/system.py`: Environment (`getEnv`, `setEnv`, `listEnv`, `execCmd`, `platform`, `cpuCount`), clock (`time`, `sleep`), and bounded background concurrency (`spawn`, `awaitTask`).
+* `engine/shelves/compatibility.py`: Stable facade assembling `get_standard_shelf()`.
 
+---
 
+## 5. Execution Engine Capability Matrix
 
+FoxVC supports three execution engines with honest, documented capability boundaries:
+
+| Feature / Subsystem | Tree-Walking Interpreter (`interp`) | Python Register VM (`vm`) | Native C VM (`fast`) |
+| :--- | :---: | :---: | :---: |
+| **Arithmetic & Logic** | Supported | Supported | Supported |
+| **Control Flow (`pick`, `cycle`, `spin`)** | Supported | Supported | Supported |
+| **Dynamic Acts & Recursion** | Supported | Supported | FoxVM fallback |
+| **Numeric Arrays / Lists** | Supported | Supported | Supported (Opcode 28/29/30) |
+| **Named Packs & Blueprints (`mold`)** | Supported | Supported | FoxVM fallback |
+| **Trap & Guard Isolation** | Supported | Supported | FoxVM fallback |
+| **Fuse Module System** | Supported | Supported | FoxVM fallback |
+| **Raylib 2D Hardware Graphics** | Supported | Supported | Supported (Native FFI) |
+| **SQLite, Crypto, Network Shelves** | Supported | Supported | FoxVM fallback |
+
+When `engine_mode='fast'` encounters dynamic acts, molds, or modules without `allow_fallback=True`, it cleanly rejects execution with a `NotImplementedError` rather than silently degrading or miscomputing results.
+
+---
+
+## 6. Security and Containment Controls
+
+* **Execution Timeout:** Enforces execution deadlines both cooperatively within loop boundaries and externally via thread execution limits.
+* **Filesystem Sandbox:** Resolves target paths using canonical symlink resolution (`os.path.realpath`). Operations escaping the approved directory via relative traversal or symlinks are blocked.
+* **Network Isolation:** In sandboxed mode, outbound HTTP requests targeting loopback addresses (`127.0.0.1`, `localhost`) or private RFC 1918 subnets are rejected. TLS verification is enforced by default.
+* **SQLite Hardening:** Database connections in sandboxed mode enforce `uri=False` and block `ATTACH DATABASE` directives.
+* **Web Studio Security:** Restricts `/api/run` to explicit loopback origins; requests with missing or untrusted `Origin` headers are rejected with HTTP 403 Forbidden.
+* **Concurrency Bounds:** Spawning background tasks via `spawn()` is capped at 64 concurrent tasks to prevent resource exhaustion.
+* **C VM Limits:** Validates fixed-size limits (registers ≤ 256, variables ≤ 512, arena ≤ 8MB) prior to native dispatch.

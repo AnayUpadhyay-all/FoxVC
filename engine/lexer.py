@@ -76,11 +76,13 @@ class TokenType(Enum):
 
 
 class LexerError(Exception):
-    def __init__(self, message: str, line: int = 0, column: int = 0):
-        super().__init__(f"Lexer Error [Line {line}, Col {column}]: {message}")
+    def __init__(self, message: str, line: int = 0, column: int = 0, filename: Optional[str] = None):
         self.message = message
         self.line = line
         self.column = column
+        self.filename = filename
+        file_part = f"[{filename}] " if filename else ""
+        super().__init__(f"Lexer Error {file_part}[Line {line}, Col {column}]: {message}")
 
 
 class Token:
@@ -140,7 +142,21 @@ class Lexer:
             if not stripped or stripped.startswith("#"):
                 continue
 
-            leading_spaces = len(line_text) - len(line_text.lstrip(' '))
+            # Measure indentation with tab expansion to 4-space stops
+            indent_chars = []
+            raw_ws_len = 0
+            for ch in line_text:
+                if ch == ' ':
+                    indent_chars.append(' ')
+                    raw_ws_len += 1
+                elif ch == '\t':
+                    tab_spaces = 4 - (len(indent_chars) % 4)
+                    indent_chars.extend([' '] * tab_spaces)
+                    raw_ws_len += 1
+                else:
+                    break
+
+            leading_spaces = len(indent_chars)
             current_indent = self.indent_stack[-1]
 
             if leading_spaces > current_indent:
@@ -150,8 +166,13 @@ class Lexer:
                 while leading_spaces < self.indent_stack[-1]:
                     self.indent_stack.pop()
                     self.tokens.append(Token(TokenType.DEDENT, leading_spaces, line_num, 1))
+                if leading_spaces != self.indent_stack[-1]:
+                    raise LexerError(
+                        f"Indentation error: unindent does not match any outer level ({leading_spaces} spaces)",
+                        line_num, 1, filename=self.filename
+                    )
 
-            idx = leading_spaces
+            idx = raw_ws_len
             line_len = len(line_text)
             while idx < line_len:
                 ch = line_text[idx]
@@ -224,7 +245,7 @@ class Lexer:
                         idx += 1
 
                     if not found_end:
-                        raise LexerError(f"Unclosed string literal starting with {quote}", line_num, start_col)
+                        raise LexerError(f"Unclosed string literal (unterminated string) starting with {quote}", line_num, start_col, filename=self.filename)
 
                     self.tokens.append(Token(TokenType.STRING, "".join(str_chars), line_num, start_col))
                     continue
@@ -255,7 +276,7 @@ class Lexer:
                     self.tokens.append(Token(tok_type, ident, line_num, start_col))
                     continue
 
-                raise LexerError(f"Unexpected character '{ch}'", line_num, col)
+                raise LexerError(f"Unexpected character '{ch}'", line_num, col, filename=self.filename)
 
             self.tokens.append(Token(TokenType.NEWLINE, "\n", line_num, len(line_text)))
 

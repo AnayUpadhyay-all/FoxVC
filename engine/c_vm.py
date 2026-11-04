@@ -104,28 +104,26 @@ class FoxCVM:
         Genuine Native C VM Capability Detection.
         Returns True ONLY if all instructions and calls in the payload are
         strictly supported by the native C VM runtime (engine/foxvm.c).
-
-        Documented Capability Matrix:
-        - Numbers & Floats: Supported (double registers, 64-bit IEEE 754)
-        - Arithmetic & Comparisons: Supported (+, -, *, /, %, ==, !=, <, >, <=, >=)
-        - Jumps & Control Flow: Supported (JUMP, JUMP_IF_FALSE, HALT)
-        - Memory Arena & Lists: Supported (8MB linear arena, FoxPack double arrays)
-        - Raylib Hardware 2D: Supported (windowing, shapes, inputs, timing)
-        - NOT Supported by Native VM (must use Python VM or Tree-Walking Interpreter):
-          * Separate Act Function Blocks (functions dict - execute on FoxVM)
-          * Blueprints/Molds (Op.DEFINE_MOLD, Op.GET_MEMBER, Op.SET_MEMBER)
-          * Error Traps & Guards (Op.GUARD, Op.SETUP_TRAP, Op.POP_TRAP)
-          * User String Dictionaries (Op.BUILD_PACK)
-          * Module Imports (Op.FUSE_MODULE)
-          * Interactive CLI Input (Op.ASK_INPUT)
-          * Host Filesystem, SQLite, Cryptography & Networking Shelves
         """
         if not instructions or not isinstance(instructions, list):
             return False
 
-        # If the compilation unit relies on separate act function blocks, C VM cannot run them
-        if functions and len(functions) > 0:
-            return False
+        known_funcs = set(functions.keys()) if functions and isinstance(functions, dict) else set()
+
+        # Check function bodies
+        if functions and isinstance(functions, dict):
+            for fname, fblock in functions.items():
+                f_insts = getattr(fblock, "instructions", [])
+                for inst in f_insts:
+                    if not isinstance(inst, tuple) or len(inst) == 0:
+                        return False
+                    op = inst[0]
+                    if op not in cls.SUPPORTED_OPS:
+                        return False
+                    if op == Op.CALL:
+                        target = inst[2] if len(inst) > 2 else None
+                        if isinstance(target, str) and target not in cls.RAYLIB_NATIVE_PRIMITIVES and target not in known_funcs:
+                            return False
 
         for inst in instructions:
             if not isinstance(inst, tuple) or len(inst) == 0:
@@ -135,12 +133,42 @@ class FoxCVM:
                 return False
             if op == Op.CALL:
                 target = inst[2] if len(inst) > 2 else None
-                if isinstance(target, str) and target not in cls.RAYLIB_NATIVE_PRIMITIVES:
+                if isinstance(target, str) and target not in cls.RAYLIB_NATIVE_PRIMITIVES and target not in known_funcs:
                     return False
         return True
 
     def compile_payload(self, code_pkg):
-        instructions = code_pkg[0] if isinstance(code_pkg, (tuple, list)) and len(code_pkg) > 0 and isinstance(code_pkg[0], list) else code_pkg
+        instructions = list(code_pkg[0]) if isinstance(code_pkg, (tuple, list)) and len(code_pkg) > 0 and isinstance(code_pkg[0], list) else list(code_pkg)
+        functions = code_pkg[1] if isinstance(code_pkg, (tuple, list)) and len(code_pkg) > 1 and isinstance(code_pkg[1], dict) else {}
+
+        func_entry_idx = {}
+        if functions:
+            combined = []
+            combined.append((Op.JUMP, None))  # Will be patched to main_start
+            for fn_name, fblock in functions.items():
+                func_entry_idx[fn_name] = len(combined)
+                for p_idx, p_name in enumerate(fblock.params):
+                    combined.append((Op.STORE_VAR, p_name, p_idx))
+                f_base = len(combined)
+                for inst in fblock.instructions:
+                    op = inst[0]
+                    if op == Op.JUMP and isinstance(inst[1], int) and inst[1] >= 0:
+                        combined.append((Op.JUMP, inst[1] + f_base))
+                    elif op == Op.JUMP_IF_FALSE and len(inst) > 2 and isinstance(inst[2], int) and inst[2] >= 0:
+                        combined.append((Op.JUMP_IF_FALSE, inst[1], inst[2] + f_base))
+                    else:
+                        combined.append(inst)
+            main_start = len(combined)
+            combined[0] = (Op.JUMP, main_start)
+            for inst in instructions:
+                op = inst[0]
+                if op == Op.JUMP and isinstance(inst[1], int) and inst[1] >= 0:
+                    combined.append((Op.JUMP, inst[1] + main_start))
+                elif op == Op.JUMP_IF_FALSE and len(inst) > 2 and isinstance(inst[2], int) and inst[2] >= 0:
+                    combined.append((Op.JUMP_IF_FALSE, inst[1], inst[2] + main_start))
+                else:
+                    combined.append(inst)
+            instructions = combined
 
         flat_inst = []
         num_consts = []
@@ -191,10 +219,10 @@ class FoxCVM:
             Op.BUILD_LIST: 28,
             Op.GET_INDEX: 29,
             Op.SET_INDEX: 30,
-            Op.PACK_NEW: 28,
-            Op.PACK_GET: 29,
-            Op.PACK_SET: 30,
             Op.BIND_CALL: 31,
+            Op.PACK_NEW: 32,
+            Op.PACK_GET: 33,
+            Op.PACK_SET: 34,
         }
 
         var_map = {}
@@ -313,12 +341,25 @@ class FoxCVM:
                 flat_inst.append(inst[1])
             elif op == Op.CALL:
                 # [19, func_id, arg_count, dst, arg0, ...]
-                if isinstance(inst[2], str) and inst[2] not in inst_to_flat:
-                    raise NotImplementedError(f"C VM cannot execute external function '{inst[2]}'")
-                func_id = inst_to_flat.get(inst[2], inst[2]) if isinstance(inst[2], int) else get_str_idx(inst[2])
+                target = inst[2]
                 args = inst[3] if len(inst) > 3 else []
-                flat_inst.extend([func_id, len(args), inst[1]])
-                flat_inst.extend(args)
+                if isinstance(target, str) and target in func_entry_idx:
+                    func_id = inst_to_flat[func_entry_idx[target]]
+                    flat_inst.extend([func_id, len(args), inst[1]])
+                    flat_inst.extend(args)
+                elif isinstance(target, str) and target in self.RAYLIB_NATIVE_PRIMITIVES:
+                    # Native Raylib dispatch via BIND_CALL (31)
+                    s_idx = get_str_idx(target)
+                    flat_inst.pop()  # Remove opcode 19 pushed above
+                    flat_inst.append(31)  # Op.BIND_CALL
+                    flat_inst.extend([s_idx, len(args), inst[1]])
+                    flat_inst.extend(args)
+                elif isinstance(target, int) and target in inst_to_flat:
+                    func_id = inst_to_flat[target]
+                    flat_inst.extend([func_id, len(args), inst[1]])
+                    flat_inst.extend(args)
+                else:
+                    raise NotImplementedError(f"C VM cannot execute external function '{target}'")
             elif op == Op.RETURN:
                 flat_inst.append(inst[1])
             elif op == Op.BUILD_LIST:

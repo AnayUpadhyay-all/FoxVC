@@ -7,12 +7,15 @@ differential validation, and diagnostic inspection.
 import sys
 import os
 import time
+import concurrent.futures
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
 
 from engine.lexer import Lexer, LexerError
 from engine.parser import Parser, ParserError
 from engine.interpreter import Interpreter, FoxPack, RuntimeError as FoxRuntimeError, EmitSignal
+from engine.version import FOXVC_LANGUAGE_VERSION, FOXVC_ENGINE_VERSION, FOXVC_RUNTIME_VERSION
+from engine.runtime import Diagnostic, DiagnosticCategory, DiagnosticSeverity
 
 
 def format_fox_diagnostic(err: Exception, source: str, line_no: int = None, filename: str = "<script>") -> str:
@@ -47,6 +50,13 @@ class ExecutionResult:
     value: Any = None
     variables: Dict[str, Any] = field(default_factory=dict)
     engine: str = "interp"
+    diagnostics: List[Any] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    statement_reports: List[Any] = field(default_factory=list)
+
+    @property
+    def spatial_space(self) -> Any:
+        return self.metadata.get("spatial_space")
 
     def __getitem__(self, key: str) -> Any:
         if key == "success":
@@ -61,6 +71,12 @@ class ExecutionResult:
             return self.variables
         if key == "engine":
             return self.engine
+        if key == "diagnostics":
+            return self.diagnostics
+        if key == "metadata":
+            return self.metadata
+        if key == "statement_reports":
+            return self.statement_reports
         raise KeyError(key)
 
     def get(self, key: str, default: Any = None) -> Any:
@@ -91,109 +107,101 @@ def run_foxvc(
     """
     fname = file_path or filename or "main.fox"
     src = "" if source is None else str(source)
+    default_meta = {
+        "language_version": FOXVC_LANGUAGE_VERSION,
+        "engine_version": FOXVC_ENGINE_VERSION,
+        "runtime_version": FOXVC_RUNTIME_VERSION
+    }
 
     if not src.strip():
-        res = ExecutionResult(success=True, output="", value=None, engine=engine_mode)
+        res = ExecutionResult(success=True, output="", value=None, engine=engine_mode, metadata=dict(default_meta))
         return res if as_result else res.value
 
-    if engine_mode == 'interp':
-        interp = Interpreter(sandboxed=sandboxed, allowed_dir=allowed_dir, input_source=input_source)
-        try:
-            tokens = Lexer(src, filename=fname).tokenize()
-            ast = Parser(tokens, filename=fname, source=src).parse()
-            interp.execute(ast)
-            res = ExecutionResult(
-                success=True,
-                output="\n".join(interp.output_buffer),
-                value=getattr(interp, "last_emitted", None),
-                variables=dict(interp.variables.items()),
-                engine="interp"
-            )
-        except EmitSignal as sig:
-            res = ExecutionResult(
-                success=True,
-                output="\n".join(interp.output_buffer),
-                value=sig.value,
-                variables=dict(interp.variables.items()),
-                engine="interp"
-            )
-        except (LexerError, ParserError, FoxRuntimeError) as err:
-            from engine.friendly_errors import explain_error_in_everyday_language
-            hint = explain_error_in_everyday_language(str(err), src)
-            err_text = f"{err}\n\n\033[36m{hint}\033[0m" if hint else str(err)
-            res = ExecutionResult(
-                success=False,
-                output="\n".join(interp.output_buffer),
-                error=err_text,
-                variables=dict(interp.variables.items()),
-                engine="interp"
-            )
-        except Exception as err:
-            res = ExecutionResult(
-                success=False,
-                output="\n".join(interp.output_buffer),
-                error=f"Runtime Fault: {err}",
-                variables=dict(interp.variables.items()),
-                engine="interp"
-            )
+    def _execute_inner() -> ExecutionResult:
+        if engine_mode == 'interp':
+            interp = Interpreter(sandboxed=sandboxed, allowed_dir=allowed_dir, input_source=input_source, filename=fname, timeout=timeout)
+            try:
+                tokens = Lexer(src, filename=fname).tokenize()
+                ast = Parser(tokens, filename=fname, source=src).parse()
+                interp.execute(ast)
+                res = ExecutionResult(
+                    success=True,
+                    output="\n".join(interp.output_buffer),
+                    value=getattr(interp, "last_emitted", None),
+                    variables=dict(interp.variables.items()),
+                    engine="interp",
+                    metadata=dict(default_meta)
+                )
+            except EmitSignal as sig:
+                res = ExecutionResult(
+                    success=True,
+                    output="\n".join(interp.output_buffer),
+                    value=sig.value,
+                    variables=dict(interp.variables.items()),
+                    engine="interp",
+                    metadata=dict(default_meta)
+                )
+            except (LexerError, ParserError, FoxRuntimeError) as err:
+                from engine.friendly_errors import explain_error_in_everyday_language
+                hint = explain_error_in_everyday_language(str(err), src)
+                err_text = f"{err}\n\n\033[36m{hint}\033[0m" if hint else str(err)
+                category = DiagnosticCategory.RUNTIME
+                if isinstance(err, (LexerError, ParserError)):
+                    category = DiagnosticCategory.SYNTAX
+                diag = Diagnostic(
+                    message=getattr(err, "message", str(err)),
+                    line=getattr(err, "line", 1),
+                    column=getattr(err, "column", 1),
+                    category=category,
+                    severity=DiagnosticSeverity.ERROR,
+                    file=getattr(err, "filename", getattr(err, "file", fname))
+                )
+                res = ExecutionResult(
+                    success=False,
+                    output="\n".join(interp.output_buffer),
+                    error=err_text,
+                    variables=dict(interp.variables.items()),
+                    engine="interp",
+                    diagnostics=[diag],
+                    metadata=dict(default_meta)
+                )
+            except Exception as err:
+                diag = Diagnostic(
+                    message=str(err),
+                    line=1,
+                    column=1,
+                    category=DiagnosticCategory.INTERNAL,
+                    severity=DiagnosticSeverity.ERROR,
+                    file=fname
+                )
+                res = ExecutionResult(
+                    success=False,
+                    output="\n".join(interp.output_buffer),
+                    error=f"Runtime Fault: {err}",
+                    variables=dict(interp.variables.items()),
+                    engine="interp",
+                    diagnostics=[diag],
+                    metadata=dict(default_meta)
+                )
 
-    elif engine_mode == 'vm':
-        from engine.bytecode import BytecodeCompiler, FoxVM
-        vm = FoxVM()
-        try:
-            tokens = Lexer(src, filename=fname).tokenize()
-            ast = Parser(tokens, filename=fname, source=src).parse()
-            compiler = BytecodeCompiler()
-            code_pkg = compiler.compile(ast)
+        elif engine_mode == 'vm':
+            from engine.bytecode import BytecodeCompiler, FoxVM
+            vm = FoxVM()
+            if timeout is not None:
+                vm.timeout = float(timeout)
+                vm.start_time = time.time()
+            try:
+                tokens = Lexer(src, filename=fname).tokenize()
+                ast = Parser(tokens, filename=fname, source=src).parse()
+                compiler = BytecodeCompiler()
+                code_pkg = compiler.compile(ast)
 
-            if debug:
-                code = code_pkg[0] if isinstance(code_pkg, tuple) else code_pkg
-                print('--- BYTECODE ---')
-                for i, inst in enumerate(code):
-                    print(f'{i:02d}: {inst[0].name} {inst[1:]}')
-
-            val = vm.run(code_pkg)
-            res = ExecutionResult(
-                success=True,
-                output="\n".join(vm.output_buffer),
-                value=val,
-                variables=dict(vm.globals),
-                engine="vm"
-            )
-        except Exception as err:
-            line_no = getattr(vm, "line_map", {}).get(getattr(vm, "ip", 0), 1)
-            err_msg = format_fox_diagnostic(err, src, line_no, fname)
-            if debug:
-                sys.stderr.write(err_msg)
-            res = ExecutionResult(
-                success=False,
-                output="\n".join(getattr(vm, "output_buffer", [])),
-                error=err_msg.strip(),
-                engine="vm"
-            )
-
-    elif engine_mode == 'fast':
-        from engine.bytecode import BytecodeCompiler, FoxVM
-        from engine.c_vm import FoxCVM
-
-        try:
-            tokens = Lexer(src, filename=fname).tokenize()
-            ast = Parser(tokens, filename=fname, source=src).parse()
-            compiler = BytecodeCompiler()
-            code_pkg = compiler.compile(ast)
-            instructions = code_pkg[0] if isinstance(code_pkg, tuple) else code_pkg
-            functions = code_pkg[1] if isinstance(code_pkg, tuple) else {}
-
-            can_acc = FoxCVM.can_accelerate(instructions, functions)
-            if not can_acc:
-                if not allow_fallback:
-                    raise NotImplementedError(
-                        "Native C VM (FoxCVM) cannot accelerate this script (unsupported dynamic opcodes or external calls). "
-                        "Execute with engine_mode='vm' or pass allow_fallback=True."
-                    )
                 if debug:
-                    print("[Hybrid Router]: Script uses dynamic features; explicitly falling back to FoxVM.")
-                vm = FoxVM()
+                    code = code_pkg[0] if isinstance(code_pkg, tuple) else code_pkg
+                    print('--- BYTECODE ---')
+                    for i, inst in enumerate(code):
+                        print(f'{i:02d}: {inst[0].name} {inst[1:]}')
+
                 val = vm.run(code_pkg)
                 res = ExecutionResult(
                     success=True,
@@ -202,20 +210,39 @@ def run_foxvc(
                     variables=dict(vm.globals),
                     engine="vm"
                 )
-            else:
-                cvm = FoxCVM()
-                val = cvm.run(instructions)
-                res = ExecutionResult(
-                    success=True,
-                    output="",
-                    value=val,
-                    engine="fast"
-                )
-        except Exception as err:
-            if allow_fallback and 'code_pkg' in locals():
+            except Exception as err:
+                line_no = getattr(vm, "line_map", {}).get(getattr(vm, "ip", 0), 1)
+                err_msg = format_fox_diagnostic(err, src, line_no, fname)
                 if debug:
-                    print(f"[FoxCVM Fallback]: {err}; explicitly executing on FoxVM.")
-                try:
+                    sys.stderr.write(err_msg)
+                res = ExecutionResult(
+                    success=False,
+                    output="\n".join(getattr(vm, "output_buffer", [])),
+                    error=err_msg.strip(),
+                    engine="vm"
+                )
+
+        elif engine_mode == 'fast':
+            from engine.bytecode import BytecodeCompiler, FoxVM
+            from engine.c_vm import FoxCVM
+
+            try:
+                tokens = Lexer(src, filename=fname).tokenize()
+                ast = Parser(tokens, filename=fname, source=src).parse()
+                compiler = BytecodeCompiler()
+                code_pkg = compiler.compile(ast)
+                instructions = code_pkg[0] if isinstance(code_pkg, tuple) else code_pkg
+                functions = code_pkg[1] if isinstance(code_pkg, tuple) else {}
+
+                can_acc = FoxCVM.can_accelerate(instructions, functions)
+                if not can_acc:
+                    if not allow_fallback:
+                        raise NotImplementedError(
+                            "Native C VM (FoxCVM) cannot accelerate this script (unsupported dynamic opcodes or external calls). "
+                            "Execute with engine_mode='vm' or pass allow_fallback=True."
+                        )
+                    if debug:
+                        print("[Hybrid Router]: Script uses dynamic features; explicitly falling back to FoxVM.")
                     vm = FoxVM()
                     val = vm.run(code_pkg)
                     res = ExecutionResult(
@@ -225,22 +252,77 @@ def run_foxvc(
                         variables=dict(vm.globals),
                         engine="vm"
                     )
-                except Exception as vm_err:
+                else:
+                    cvm = FoxCVM()
+                    val = cvm.run(instructions)
+                    res = ExecutionResult(
+                        success=True,
+                        output="",
+                        value=val,
+                        engine="fast"
+                    )
+            except Exception as err:
+                if allow_fallback and 'code_pkg' in locals():
+                    if debug:
+                        print(f"[FoxCVM Fallback]: {err}; explicitly executing on FoxVM.")
+                    try:
+                        vm = FoxVM()
+                        val = vm.run(code_pkg)
+                        res = ExecutionResult(
+                            success=True,
+                            output="\n".join(vm.output_buffer),
+                            value=val,
+                            variables=dict(vm.globals),
+                            engine="vm"
+                        )
+                    except Exception as vm_err:
+                        res = ExecutionResult(
+                            success=False,
+                            output="",
+                            error=f"[FoxVM Error after Native Fallback]: {vm_err}",
+                            engine="vm"
+                        )
+                else:
                     res = ExecutionResult(
                         success=False,
                         output="",
-                        error=f"[FoxVM Error after Native Fallback]: {vm_err}",
-                        engine="vm"
+                        error=f"[FoxCVM Error]: {err}",
+                        engine="fast"
                     )
-            else:
-                res = ExecutionResult(
-                    success=False,
-                    output="",
-                    error=f"[FoxCVM Error]: {err}",
-                    engine="fast"
-                )
+        else:
+            raise ValueError(f"Unknown engine mode '{engine_mode}'. Supported modes: 'interp', 'vm', 'fast'.")
+
+        return res
+
+    if timeout is not None and float(timeout) > 0:
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(_execute_inner)
+        try:
+            res = future.result(timeout=float(timeout))
+        except concurrent.futures.TimeoutError:
+            diag = Diagnostic(
+                message=f"Execution timed out after {timeout} seconds",
+                line=1,
+                column=1,
+                category=DiagnosticCategory.SECURITY,
+                severity=DiagnosticSeverity.ERROR,
+                file=fname
+            )
+            res = ExecutionResult(
+                success=False,
+                output="",
+                error=f"Execution timed out after {timeout} seconds",
+                engine=engine_mode,
+                diagnostics=[diag],
+                metadata=dict(default_meta)
+            )
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
     else:
-        raise ValueError(f"Unknown engine mode '{engine_mode}'. Supported modes: 'interp', 'vm', 'fast'.")
+        res = _execute_inner()
+
+    if not res.metadata:
+        res.metadata = dict(default_meta)
 
     return res if as_result else res.value
 
