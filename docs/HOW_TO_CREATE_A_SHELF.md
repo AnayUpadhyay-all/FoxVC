@@ -1,6 +1,6 @@
 # How to Build a Shelf in FoxVC (10-Minute Tutorial)
 
-In FoxVC, standard library modules are called **Shelves** (e.g. `shelf net`, `shelf db`, `shelf crypto`, `shelf file`).
+In FoxVC, standard library modules are called **Shelves** (e.g. `shelf net`, `shelf db`, `shelf crypto`, `shelf file`, `shelf text`).
 
 Writing a new shelf takes only **10–15 minutes**. This guide will walk you through building one from scratch.
 
