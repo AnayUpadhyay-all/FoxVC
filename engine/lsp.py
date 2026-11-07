@@ -53,7 +53,8 @@ SHELVES_DOCS = {
     "system": "OS interaction, environment variables, time, and subprocesses.",
     "data": "Data serialization and parsing for JSON, CSV, TOML, and YAML.",
     "audio": "Audio playback, streaming, and sound synthesis.",
-    "socket": "Raw asynchronous TCP and WebSocket networking."
+    "socket": "Raw asynchronous TCP and WebSocket networking.",
+    "text": "Unicode-aware text processing, normalization, counting, wrapping, and slug generation."
 }
 
 
