@@ -207,6 +207,40 @@ FoxVC guarantees language identity stability: **these 25 keywords are permanent.
 
 ---
 
+## 🤖 Code with Any AI (ChatGPT, Claude, Cursor)
+
+You don't need to learn FoxVC alone. FoxVC is **100% AI-First and LLM-ready**. 
+
+You can give the language specification directly to **ChatGPT, Claude, Cursor, Gemini, or Copilot**, and your AI will immediately understand the syntax, write idiomatic FoxVC code, and guide you through your first project!
+
+### 1-Click AI Starter Prompt:
+Copy and paste this into any AI:
+```text
+You are an expert FoxVC engineer. Read the official language specification here:
+https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/llms.txt
+Full API reference: https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/llms-full.txt
+
+Please teach me FoxVC step-by-step and help me write my first project!
+```
+
+* 📄 **[llms.txt](llms.txt)** — Concise AI context specification.
+* 📚 **[llms-full.txt](llms-full.txt)** — Complete reference manual with all 10 shelves and APIs.
+* 📐 **[GRAMMAR.md](GRAMMAR.md)** — Formal EBNF grammar rules and syntax structures.
+
+---
+
+## 🤝 Contributing to FoxVC
+
+FoxVC is an independent, community-driven project. We welcome developers of all skill levels!
+
+Because FoxVC is clean, compact, and deterministic, **you can learn the architecture and contribute your first standard shelf in an afternoon**.
+
+* 🚀 **[CONTRIBUTING.md](CONTRIBUTING.md)** — How to set up, test, and contribute.
+* 📦 **[How to Build a Shelf in 10 Minutes](docs/HOW_TO_CREATE_A_SHELF.md)** — Step-by-step tutorial to add new libraries.
+* 🏷️ **Good First Issues:** Search our repository issues for `good first issue` to pick up beginner-friendly tasks (regex shelf, base64 encoding, tutorials, and editor themes).
+
+---
+
 ## 📄 License
 
 FoxVC is open-source software licensed under the [MIT License](LICENSE).

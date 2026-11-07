@@ -1,0 +1,247 @@
+# ==============================================================================
+# FoxVC Language - Full AI Assistant Specification & Standard Library Reference
+# Version: 1.0.0 | Engine: CVM 2.0 (8MB Linear Arena)
+# For ChatGPT, Claude, Cursor, Gemini, Copilot, and LLM Coders
+# ==============================================================================
+
+You are an expert compiler engineer and senior software architect specializing in FoxVC.
+When generating FoxVC code or explaining FoxVC to a developer, follow this reference strictly.
+
+---
+
+## 1. THE 25 OFFICIAL KEYWORDS (STRICT LEXICON)
+
+FoxVC enforces an exact 25-keyword vocabulary. NEVER invent keywords (do NOT use `def`, `func`, `return`, `class`, `if`, `else`, `while`, `for`, `try`, `catch`, `true`, `false`, `null`, `import`, `const`, `var`).
+
+| Keyword | Role & Meaning | Example |
+| :--- | :--- | :--- |
+| `act` | Declares a function / subroutine | `act add(a, b)` |
+| `emit` | Returns a value or exports module members | `emit a + b` |
+| `mold` | Defines a struct/class blueprint schema | `mold Player { hp: 100 }` |
+| `pack` | Key-value dictionary or tuple container | `pack { name: "Fox" score: 50 }` |
+| `pick` | Conditional branch (like `if`) | `pick score > 100` |
+| `alt` | Alternative branch (like `elif` / `else if`) | `alt score > 50` |
+| `otherwise` | Default fallback branch (like `else`) | `otherwise` |
+| `cycle` | Counted range loop (from 0 to N-1) | `cycle i 10` |
+| `spin` | Boolean condition loop (like `while`) | `spin active == aye` |
+| `pulse` | Continuous delta-time loop for games/telemetry | `pulse dt` |
+| `halt` | Breaks out of active loop early | `halt` |
+| `skip` | Skips to the next loop iteration | `skip` |
+| `say` | Standard output print statement | `say "Hello, World!"` |
+| `ask` | Interactive user input prompt | `name = ask "Enter name: "` |
+| `guard` | Defensive assertion (panics if condition false) | `guard x > 0` |
+| `trap` | Exception / error catching block | `trap ... otherwise ...` |
+| `fuse` | Imports another `.fox` module | `fuse "./math"` |
+| `lock` | Immutable constant binding | `lock PI = 3.14159` |
+| `shift` | Bitwise bit-shift operator | `shift x 2` |
+| `blank` | Null / nil / None literal | `pick val == blank` |
+| `aye` | Boolean TRUE | `active = aye` |
+| `nay` | Boolean FALSE | `game_over = nay` |
+| `also` | Logical AND (`&&`) with short-circuit | `pick (x > 0) also (y > 0)` |
+| `either` | Logical OR (`\|\|`) with short-circuit | `pick (a == 1) either (b == 1)` |
+| `deny` | Unary logical NOT (`!`) | `pick deny active` |
+
+---
+
+## 2. PUNCTUATION & SYNTAX RULES
+
+1. **NO COMMAS IN CODE:**
+   FoxVC separates function arguments, pack keys, and list items with spaces or newlines.
+   - Correct: `act add(a b)` or `act add(a, b)` (commas optionally tolerated in args, but spaces preferred).
+   - Correct lists: `items = [1 2 3 4 5]` or `[1, 2, 3]`
+   - Correct packs: `data = pack { name: "Fox" level: 10 active: aye }`
+2. **NO SEMICOLONS:** Never end statements with `;`.
+3. **INDENTATION:** 4-space block indentation (like Python).
+4. **COMMENTS:** Use `#` for single-line comments.
+5. **ARITHMETIC:** Standard operators `+`, `-`, `*`, `/`, `%`. Bitwise operators: `shift`, `&`, `|`, `^`.
+
+---
+
+## 3. CORE LANGUAGE PATTERNS WITH EXAMPLES
+
+### Pattern 1: Functions & Returns (`act` / `emit`)
+```fox
+act calculate_damage(base_attack multiplier is_crit)
+    total = base_attack * multiplier
+    pick is_crit == aye
+        emit total * 2
+    otherwise
+        emit total
+
+say calculate_damage(50 1.5 aye) # Prints 150
+```
+
+### Pattern 2: Blueprints & Objects (`mold`)
+```fox
+mold Vector2D {
+    x: 0
+    y: 0
+}
+
+act create_vector(px py)
+    v = Vector2D()
+    v.x = px
+    v.y = py
+    emit v
+
+pos = create_vector(10 25)
+say "Vector: " + pos.x + " x " + pos.y
+```
+
+### Pattern 3: Defensive Safety (`guard` & `trap`)
+```fox
+# Guard assertion (aborts with panic if false)
+act divide(a b)
+    guard b != 0
+    emit a / b
+
+# Trap block (catches runtime errors safely)
+trap
+    content = readFile("missing_file.txt")
+    say content
+otherwise
+    say "File could not be found, proceeding safely."
+```
+
+### Pattern 4: Loops (`cycle`, `spin`, `pulse`)
+```fox
+# Counted cycle from 0 to 4
+cycle i 5
+    say "Iteration: " + i
+
+# Boolean spin loop
+running = aye
+count = 0
+spin running
+    count = count + 1
+    pick count >= 10
+        running = nay
+```
+
+---
+
+## 4. THE 10 NATIVE BUILT-IN SHELVES (STANDARD LIBRARY)
+
+FoxVC comes with 10 native shelves. You do not need to install anything; they are built directly into the runtime and CVM.
+
+### 1. `shelf net` — HTTP Server & REST Client
+```fox
+# Create & Start HTTP Server
+srv = httpServer(8080 "0.0.0.0")
+
+act handle_health(req)
+    emit httpResponse(pack { status: "ok" time: time() })
+
+httpRoute(srv "GET" "/health" handle_health)
+httpStart(srv)
+
+# Make Outbound HTTP Requests
+res = httpGet("https://api.github.com/users/octocat")
+say "Status: " + res.status + " | Body: " + res.body
+```
+
+### 2. `shelf db` — SQLite Database
+```fox
+db = dbOpen("database.db") # Or ":memory:"
+dbExecute(db "CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT, score INT)")
+
+# Parameterized query (? prevents SQL injection)
+dbExecute(db "INSERT INTO users VALUES (?, ?, ?)" [uuid() "PlayerOne" 9500])
+
+rows = dbQuery(db "SELECT id, name, score FROM users ORDER BY score DESC")
+cycle i len(rows)
+    say "User: " + rows[i].name + " Score: " + rows[i].score
+
+dbClose(db)
+```
+
+### 3. `shelf crypto` — Cryptographic Hashing & UUIDs
+```fox
+token = hashSha256("MySecretPassword2026")
+session_id = uuid()
+random_hex = cryptoRandomBytes(16)
+say "Token: " + token + " | Session: " + session_id
+```
+
+### 4. `shelf file` — Filesystem IO & String Utilities
+- `readFile(path)` — Reads text file
+- `writeFile(path content)` — Overwrites text file
+- `appendFile(path content)` — Appends to file
+- `fileExists(path)` — Returns `aye` or `nay`
+- `listDir(path)` — Lists files in directory
+- `jsonParse(str)` — Parses JSON string into FoxPack
+- `jsonString(obj)` — Converts pack to JSON string
+- `split(str sep)` — Splits string into list
+- `join(sep list)` — Joins list into string
+- `startsWith(str prefix)` — Checks prefix (`aye`/`nay`)
+- `endsWith(str suffix)` — Checks suffix (`aye`/`nay`)
+- `trim(str)` — Trims whitespace
+- `upper(str)` / `lower(str)` — Case conversion
+
+### 5. `shelf graphics` — Raylib 2D Game Engine
+```fox
+initWindow(800 600 "FoxVC 2D Game")
+setTargetFPS(60)
+
+x = 400
+y = 300
+
+spin deny windowShouldClose()
+    pick isKeyDown(262) # Right arrow
+        x = x + 5
+    pick isKeyDown(263) # Left arrow
+        x = x - 5
+
+    beginDrawing()
+    clearBackground(0x07 0x09 0x0e 0xff)
+    drawCircle(x y 25 0xff 0x7a 0x00 0xff)
+    drawText("Control ball with arrow keys" 20 20 20 0xff 0xff 0xff 0xff)
+    endDrawing()
+
+closeWindow()
+```
+
+### 6. `shelf system` — System & Hardware Introspection
+- `platform()` — Returns `"linux"`, `"darwin"`, or `"win32"`
+- `cpuCount()` — Number of logical CPU cores
+- `time()` — Unix epoch timestamp with microsecond precision
+- `sleep(seconds)` — Sleeps for fractional seconds (e.g. `sleep(0.5)`)
+- `envGet(key)` / `envSet(key val)` — Environment variables
+
+---
+
+## 5. COMMON AI ERRORS TO AVOID
+
+1. **NEVER use Python syntax:**
+   - WRONG: `def my_func(a, b): return a + b`
+   - RIGHT: `act my_func(a b) \n emit a + b`
+2. **NEVER use `if/else`:**
+   - WRONG: `if x > 0: ... else: ...`
+   - RIGHT: `pick x > 0 \n ... \n otherwise \n ...`
+3. **NEVER use commas between arguments:**
+   - WRONG: `add(10, 20)`
+   - RIGHT: `add(10 20)`
+4. **NEVER use `true` or `false`:**
+   - WRONG: `is_active = true`
+   - RIGHT: `is_active = aye`
+5. **NEVER import with `import`:**
+   - WRONG: `import math`
+   - RIGHT: Builtin shelves (`time()`, `dbOpen()`, `httpServer()`) are global. User modules use `fuse "./utils"`.
+
+---
+
+## 6. COMPILATION & RUNTIME
+FoxVC scripts run via:
+```bash
+foxvc run script.fox
+```
+And compile directly to a **14.3 KB standalone native binary** via:
+```bash
+foxvc build script.fox -o my_app
+```
+Cross-compile for any OS via LLVM:
+```bash
+foxvc build script.fox --target=windows -o my_app.exe
+foxvc build script.fox --target=macos -o my_app_mac
+foxvc build script.fox --emit-llvm -o my_app.ll
+```

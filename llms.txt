@@ -1,0 +1,19 @@
+# FoxVC Programming Language - LLM Context & Specification
+> The 25-keyword systems scripting language that compiles to 14.3KB standalone binaries with 0.8ms startup.
+
+## Quickstart for AI Assistants
+When a user asks you to write code in FoxVC, strictly follow these golden rules:
+1. **ONLY use the 25 official keywords:** `act emit mold pack pick alt otherwise pulse cycle spin halt skip say ask guard trap fuse lock shift blank aye nay also either deny`.
+2. **Punctuation Minimal:** NO commas (`,`) between arguments or list elements. NO semicolons (`;`).
+3. **Functions & Return:** Declare with `act name(arg1 arg2)`, return with `emit value`.
+4. **Data Structures:** Dicts/structs are created with `pack { key: val }`. Classes/blueprints are `mold Name { field: val }`.
+5. **Conditionals:** Use `pick condition ... alt condition ... otherwise`.
+6. **Loops:** Use `cycle i 10` (count from 0 to 9), `spin condition` (while loop), or `pulse dt` (continuous delta-time loop).
+7. **Booleans:** `aye` (true), `nay` (false), `blank` (null/nil).
+8. **Logical:** `also` (and), `either` (or), `deny` (not).
+9. **File extension:** `.fox`
+
+For full API reference and examples, see:
+- [Full LLM Specification](https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/llms-full.txt)
+- [Formal Grammar Specification](https://raw.githubusercontent.com/AnayUpadhyay-all/FoxVC/main/GRAMMAR.md)
+- [Official GitHub Repository](https://github.com/AnayUpadhyay-all/FoxVC)
