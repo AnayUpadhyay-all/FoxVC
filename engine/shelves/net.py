@@ -253,7 +253,13 @@ class FoxHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             data = resp_val._data
             status = int(data.get("status", 200))
             if "headers" in data:
-                headers = _clean_obj(data["headers"])
+                raw_headers = _clean_obj(data["headers"])
+                headers = {}
+                for hk, hv in raw_headers.items():
+                    if hk.lower() == "content_type":
+                        headers["Content-Type"] = hv
+                    else:
+                        headers[hk] = hv
             if "json" in data:
                 body = json.dumps(_clean_obj(data["json"])).encode("utf-8")
                 if "Content-Type" not in headers and "content-type" not in headers:

@@ -1,0 +1,122 @@
+# ==============================================================================
+# FoxVC Mission Control Full-Stack Web Portal & API Server
+# Uniting:
+#   - Structure (fweb): HTML5 Semantic Dashboard & Telemetry Deck
+#   - Skin (fskin): Cyberpunk Glassmorphic Theme with FoxVC Orange Accents
+#   - Logic (flogic): Reactive Client State & Asynchronous SQLite API Handlers
+# ==============================================================================
+
+say "=================================================="
+say "   🦊 Starting FoxVC Mission Portal Server        "
+say "=================================================="
+
+# 1. Initialize SQLite Database
+db = dbOpen(":memory:")
+dbExecute(db, "CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT, pass_hash TEXT, role TEXT)")
+dbExecute(db, "CREATE TABLE notes (id TEXT PRIMARY KEY, author TEXT, content TEXT, created_at REAL)")
+
+# Seed Admin & Flight Officer
+admin_pw = hashSha256("AdminSecret2026")
+dbExecute(db, "INSERT INTO users VALUES ('u1', 'admin', ?, 'Administrator')", [admin_pw])
+dbExecute(db, "INSERT INTO users VALUES ('u2', 'pilot', ?, 'Flight Officer')", [hashSha256("FoxFlight101")])
+
+# Seed Initial Mission Log
+dbExecute(db, "INSERT INTO notes VALUES ('n1', 'Commander Fox', 'Orbital telemetry stable. Reactor output at 100%.', ?)", [time()])
+say "✓ SQLite Database Initialized & Seeded."
+
+# 2. Define Web Assets (Structure & Skin)
+html_page = "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'><title>FoxVC Mission Control</title><style>body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #080a0f; color: #f0f4fc; } .header { padding: 20px 40px; background: #0f1420; border-bottom: 2px solid #ff7a00; display: flex; justify-content: space-between; align-items: center; } .title { font-size: 24px; font-weight: 800; color: #ff7a00; display: flex; align-items: center; gap: 10px; } .badge { background: #1a2336; color: #34d399; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold; border: 1px solid #059669; } .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; padding: 30px 40px; } .card { background: #111726; border: 1px solid #1e293b; border-radius: 12px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); } .card h2 { color: #f97316; margin-top: 0; font-size: 18px; border-bottom: 1px solid #1e293b; padding-bottom: 10px; } .stat { font-size: 28px; font-weight: bold; color: #38bdf8; margin: 15px 0; } input, button, textarea { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 14px; } input, textarea { background: #080c14; border: 1px solid #334155; color: #fff; } button { background: #ff7a00; border: none; color: #fff; font-weight: bold; cursor: pointer; transition: background 0.2s; } button:hover { background: #e06900; } .log-entry { background: #080d1a; padding: 12px; border-radius: 8px; border-left: 4px solid #ff7a00; margin-bottom: 10px; font-size: 14px; }</style></head><body><div class='header'><div class='title'>🦊 FoxVC Mission Control</div><div class='badge'>● SYSTEM ONLINE</div></div><div class='grid'><div class='card'><h2>⚡ Core Telemetry</h2><div class='stat' id='tempGauge'>32.4°C</div><p style='color:#94a3b8;'>Thermal Loop: Nominal</p><p style='color:#94a3b8;'>Reactor Core: Synchronized</p><button onclick='refreshTelemetry()'>Refresh Telemetry</button></div><div class='card'><h2>🔐 Officer Terminal</h2><input id='username' placeholder='Officer Username'><input id='password' type='password' placeholder='Passphrase'><button onclick='attemptLogin()'>Authorize</button><p id='loginResult' style='color:#f87171;'></p></div><div class='card'><h2>📝 Mission Logs</h2><div id='notesList'></div><textarea id='noteContent' placeholder='Enter log report...' rows='3'></textarea><button onclick='postNote()'>Submit Log Entry</button></div></div><script>async function refreshTelemetry() { const res = await fetch('/api/system'); const data = await res.json(); document.getElementById('tempGauge').innerText = data.platform.toUpperCase() + ' (' + data.cpus + ' CORES)'; } async function loadNotes() { const res = await fetch('/api/notes'); const data = await res.json(); const container = document.getElementById('notesList'); container.innerHTML = ''; data.forEach(n => { const d = document.createElement('div'); d.className = 'log-entry'; d.innerHTML = '<strong>' + n.author + ':</strong> ' + n.content; container.appendChild(d); }); } async function postNote() { const text = document.getElementById('noteContent').value; if (!text) return; await fetch('/api/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ author: 'Web Operator', content: text }) }); document.getElementById('noteContent').value = ''; loadNotes(); } async function attemptLogin() { const u = document.getElementById('username').value; const p = document.getElementById('password').value; const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) }); const data = await res.json(); const out = document.getElementById('loginResult'); if (data.success) { out.style.color = '#34d399'; out.innerText = 'Access Granted: ' + data.user.role; } else { out.style.color = '#f87171'; out.innerText = 'Denied: ' + (data.error || 'Invalid credentials'); } } loadNotes();</script></body></html>"
+
+# 3. Create HTTP Server
+srv = httpServer(8080, "127.0.0.1")
+
+# Route: GET /
+act handle_home(req)
+    emit httpResponse(html_page, 200, pack { content_type: "text/html; charset=utf-8" })
+
+httpRoute(srv, "GET", "/", handle_home)
+
+# Route: GET /health
+act handle_health(req)
+    emit httpResponse(pack { status: "online", timestamp: time() })
+
+httpRoute(srv, "GET", "/health", handle_health)
+
+# Route: GET /api/system
+act handle_system(req)
+    emit httpResponse(pack { platform: platform(), cpus: cpuCount(), timestamp: time() })
+
+httpRoute(srv, "GET", "/api/system", handle_system)
+
+# Route: GET /api/notes
+act handle_get_notes(req)
+    rows = dbQuery(db, "SELECT id, author, content, created_at FROM notes ORDER BY created_at DESC")
+    emit httpResponse(rows)
+
+httpRoute(srv, "GET", "/api/notes", handle_get_notes)
+
+# Route: POST /api/notes
+act handle_post_notes(req)
+    body = req.json
+    author = "Anonymous"
+    content = ""
+    pick body != blank
+        pick body.author != blank
+            author = body.author
+        pick body.content != blank
+            content = body.content
+    note_id = uuid()
+    dbExecute(db, "INSERT INTO notes VALUES (?, ?, ?, ?)", [note_id, author, content, time()])
+    emit httpResponse(pack { success: aye, id: note_id })
+
+httpRoute(srv, "POST", "/api/notes", handle_post_notes)
+
+# Route: POST /api/login (Demonstrating Authentication Logic)
+act handle_login(req)
+    body = req.json
+    username = ""
+    password = ""
+    pick body != blank
+        pick body.username != blank
+            username = body.username
+        pick body.password != blank
+            password = body.password
+
+    pw_hash = hashSha256(password)
+    users = dbQuery(db, "SELECT id, username, role FROM users WHERE username = ? AND pass_hash = ?", [username, pw_hash])
+    pick len(users) > 0
+        emit httpResponse(pack { success: aye, user: users[0] })
+    otherwise
+        emit httpResponse(pack { success: nay, error: "Invalid credentials" }, 401)
+
+httpRoute(srv, "POST", "/api/login", handle_login)
+
+# Route: GET /api/view_log (File reader route for penetration testing audit)
+act handle_view_log(req)
+    filename = req.query.file
+    pick filename == blank
+        emit httpResponse(pack { error: "Missing file parameter" }, 400)
+    otherwise
+        # Vulnerable Naive Check: Only checks if filename ends with .log!
+        # Does NOT verify if path climbs out using ../../ (Path Traversal)
+        pick endsWith(filename, ".log")
+            trap
+                content = readFile(filename)
+                emit httpResponse(pack { file: filename, content: content })
+            otherwise
+                emit httpResponse(pack { error: "File not found" }, 404)
+        otherwise
+            emit httpResponse(pack { error: "Access Denied: Only .log files are allowed" }, 403)
+
+httpRoute(srv, "GET", "/api/view_log", handle_view_log)
+
+# 4. Start Server
+httpStart(srv)
+say "🚀 FoxVC Web Server active at http://127.0.0.1:" + srv.port
+say "   - UI Portal: http://127.0.0.1:" + srv.port + "/"
+say "   - Ready for penetration testing & vulnerability analysis."
+say "=================================================="
+
+# Keep alive for testing
+spin srv.running == 1
+    sleep(0.5)
