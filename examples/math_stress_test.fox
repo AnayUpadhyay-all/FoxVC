@@ -42,7 +42,7 @@ say "--- 6. Expression Comparisons & Boolean Logic ---"
 val1 = 50
 val2 = 25
 val3 = 10
-comp_result = ((val1 / val2) == 2) and (val1 > (val2 + val3))
+comp_result = ((val1 / val2) == 2) also (val1 > (val2 + val3))
 say "Comparison in Logic = " + comp_result
 
 say "--- 7. Statistics: Mean and Spread ---"

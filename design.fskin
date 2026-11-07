@@ -1,6 +1,0 @@
-skin ReactorDashboard {
-    Core {
-        fill: #e05a1b;
-        glow: extreme;
-    }
-}
