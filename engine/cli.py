@@ -133,6 +133,8 @@ def show_cli_help():
   {t['primary']}run <file.fox>{RESET}          Execute a FoxVC script directly ⚡
   {t['primary']}compile <file.fox>{RESET}      Compile to fast binary AOT bytecode (.foxc) ⚡
   {t['primary']}build <file.fox> [-o bin]{RESET} Build standalone native executable binary 📦
+    {t['dim']}  Options: --target <os> (windows, macos, linux, wasm, android)
+             --emit-llvm (emit .ll IR) | --emit-c | -O 2{RESET}
   {t['primary']}mobile [port]{RESET}           Launch local Mobile Studio for Android & iOS 📱
 
 {t['accent']}Developer Tooling & Quality Assurance:{RESET}
@@ -638,7 +640,8 @@ def main():
 
     if cmd == "build":
         if len(args) < 2:
-            print("Error: Expected file path. Usage: foxvc build <file.fox> [-o output_binary] [--emit-c] [--raylib] [-O 2] [-v]", file=sys.stderr)
+            print("Error: Expected file path. Usage: foxvc build <file.fox> [-o output_binary] [--target <os>] [--emit-llvm] [--emit-c] [--raylib] [-O 2] [-v]", file=sys.stderr)
+            print("Supported targets: windows, macos, linux, wasm, android (or any LLVM triple)", file=sys.stderr)
             sys.exit(1)
         src = args[1]
         if not validate_fox_extension(src):
@@ -655,7 +658,15 @@ def main():
             if o_idx + 1 < len(args):
                 out_name = args[o_idx + 1]
 
+        target = None
+        for i, a in enumerate(args):
+            if a == "--target" and i + 1 < len(args):
+                target = args[i + 1]
+            elif a.startswith("--target="):
+                target = a.split("=", 1)[1]
+
         emit_c = "--emit-c" in args
+        emit_llvm = "--emit-llvm" in args
         raylib = "--raylib" in args
         verbose = "-v" in args or "--verbose" in args
 
@@ -672,6 +683,8 @@ def main():
                 source_path=src,
                 output_path=out_name,
                 emit_c=emit_c,
+                emit_llvm=emit_llvm,
+                target=target,
                 opt_level=opt_level,
                 raylib=raylib,
                 verbose=verbose
@@ -679,12 +692,16 @@ def main():
             size_kb = res.binary_size_bytes / 1024
             if emit_c:
                 print(f"📄 Successfully generated standalone C source: {res.output_path} ({size_kb:.1f} KB)")
+            elif emit_llvm:
+                print(f"⚡ Successfully generated LLVM IR: {res.output_path} ({size_kb:.1f} KB)")
+                print(f"🔬 LLVM Target: {res.target}")
             else:
                 rel_path = os.path.relpath(res.output_path)
                 prefix = "" if rel_path.startswith(".") else "./"
                 print(f"📦 Successfully built standalone native executable: {res.output_path} ({size_kb:.1f} KB)")
-                print(f"⚡ Zero-dependency standalone binary compiled with {res.compiler_used}")
-                print(f"🚀 Run it directly: {prefix}{rel_path}")
+                print(f"⚡ Target: {res.target} | Compiled with {res.compiler_used}")
+                if "windows" not in str(res.target) and "wasm" not in str(res.target) and sys.platform != "win32":
+                    print(f"🚀 Run it directly: {prefix}{rel_path}")
             sys.exit(0)
         except BuildError as be:
             print(f"Build Error: {str(be)}", file=sys.stderr)

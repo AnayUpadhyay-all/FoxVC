@@ -102,6 +102,27 @@ say answer
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout.strip(), "42")
 
+    def test_emit_llvm_ir(self):
+        fox_file = os.path.join(self.temp_dir.name, "llvm_test.fox")
+        with open(fox_file, "w") as f:
+            f.write("say \"LLVM from FoxVC\"\n")
+
+        ll_file = os.path.join(self.temp_dir.name, "llvm_test.ll")
+        result = self.compiler.build(fox_file, output_path=ll_file, emit_llvm=True)
+
+        self.assertTrue(result.success)
+        self.assertTrue(os.path.exists(ll_file))
+        with open(ll_file, "r") as f:
+            ll_content = f.read()
+        self.assertIn("target triple", ll_content)
+        self.assertIn("FOX_EMBEDDED_BYTECODE", ll_content)
+
+    def test_target_resolution(self):
+        self.assertEqual(self.compiler.resolve_target("windows"), ("x86_64-w64-mingw32", ".exe"))
+        self.assertEqual(self.compiler.resolve_target("macos"), ("aarch64-apple-darwin", ""))
+        self.assertEqual(self.compiler.resolve_target("wasm"), ("wasm32-unknown-wasi", ".wasm"))
+        self.assertEqual(self.compiler.resolve_target("linux-arm64"), ("aarch64-unknown-linux-gnu", ""))
+
     def test_build_nonexistent_file(self):
         with self.assertRaises(FileNotFoundError):
             self.compiler.build("/tmp/this_file_should_not_exist_xyz.fox")

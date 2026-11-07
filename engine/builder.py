@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 
 from engine.lexer import Lexer
 from engine.parser import Parser
@@ -37,8 +37,35 @@ class BuildResult:
     error: Optional[str] = None
 
 
+# Supported cross-compilation targets mapped to LLVM triples and default binary extensions
+SUPPORTED_TARGETS: Dict[str, Tuple[str, str]] = {
+    # Linux
+    "linux": ("x86_64-unknown-linux-gnu", ""),
+    "linux-x64": ("x86_64-unknown-linux-gnu", ""),
+    "linux-arm64": ("aarch64-unknown-linux-gnu", ""),
+    "linux-arm": ("armv7-unknown-linux-gnueabihf", ""),
+    # Windows (PE/COFF 64-bit)
+    "windows": ("x86_64-w64-mingw32", ".exe"),
+    "win": ("x86_64-w64-mingw32", ".exe"),
+    "win64": ("x86_64-w64-mingw32", ".exe"),
+    "win-arm64": ("aarch64-pc-windows-msvc", ".exe"),
+    # macOS (Darwin Mach-O)
+    "macos": ("aarch64-apple-darwin", ""),
+    "darwin": ("aarch64-apple-darwin", ""),
+    "mac-arm64": ("aarch64-apple-darwin", ""),
+    "mac-x64": ("x86_64-apple-darwin", ""),
+    # WebAssembly (WASI)
+    "wasm": ("wasm32-unknown-wasi", ".wasm"),
+    "wasm32": ("wasm32-unknown-wasi", ".wasm"),
+    "webassembly": ("wasm32-unknown-wasi", ".wasm"),
+    # Android
+    "android": ("aarch64-linux-android", ""),
+    "android-arm64": ("aarch64-linux-android", ""),
+}
+
+
 class StandaloneCompiler:
-    """Compiles FoxVC source files into standalone native executable binaries."""
+    """Compiles FoxVC source files into standalone native executable binaries using C/LLVM."""
 
     def __init__(self):
         self.foxvm_c_path = os.path.join(os.path.dirname(__file__), "foxvm.c")
@@ -46,12 +73,37 @@ class StandaloneCompiler:
             raise FileNotFoundError(f"FoxVM C runtime engine template not found at {self.foxvm_c_path}")
 
     @staticmethod
-    def find_c_compiler() -> Optional[Tuple[str, str]]:
+    def resolve_target(target_name: Optional[str]) -> Tuple[Optional[str], str]:
         """
-        Locates an available C compiler on the host system.
-        Returns tuple of (compiler_path, compiler_type: 'gcc' | 'clang' | 'cl').
+        Resolves a target alias into (llvm_target_triple, default_extension).
+        Returns (None, '') for native host compilation.
         """
-        for name, ctype in [("gcc", "gcc"), ("clang", "clang"), ("cc", "gcc"), ("cl", "cl")]:
+        if not target_name or target_name.lower().strip() in ("host", "native", "local"):
+            return None, ".exe" if sys.platform == "win32" else ""
+
+        normalized = target_name.lower().strip()
+        if normalized in SUPPORTED_TARGETS:
+            return SUPPORTED_TARGETS[normalized]
+
+        ext = ".exe" if ("windows" in normalized or "mingw" in normalized) else (".wasm" if "wasm" in normalized else "")
+        return normalized, ext
+
+    @staticmethod
+    def find_c_compiler(target_triple: Optional[str] = None) -> Optional[Tuple[str, str]]:
+        """
+        Locates an available C/LLVM compiler on the host system.
+        Prioritizes Clang (LLVM) for multi-target support and specialized cross-compilers.
+        Returns tuple of (compiler_path, compiler_type: 'clang' | 'gcc' | 'cl' | 'mingw').
+        """
+        # If targeting Windows, check for mingw-w64 toolchains first
+        if target_triple and ("mingw" in target_triple or "windows" in target_triple):
+            for mingw_name in ["x86_64-w64-mingw32-gcc", "x86_64-w64-mingw32-clang"]:
+                p = shutil.which(mingw_name)
+                if p:
+                    return p, "mingw"
+
+        # Prioritize Clang (LLVM) because it has universal cross-target backends built in
+        for name, ctype in [("clang", "clang"), ("gcc", "gcc"), ("cc", "gcc"), ("cl", "cl")]:
             path = shutil.which(name)
             if path:
                 return path, ctype
@@ -159,12 +211,15 @@ int main(int argc, char** argv) {{
         source_path: str,
         output_path: Optional[str] = None,
         emit_c: bool = False,
+        emit_llvm: bool = False,
+        target: Optional[str] = None,
         opt_level: str = "2",
         raylib: bool = False,
         verbose: bool = False
     ) -> BuildResult:
         """
-        Builds a .fox source file into a native binary executable or C source.
+        Builds a .fox source file into a native binary executable, LLVM IR, or C source.
+        Supports multi-target cross-compilation via LLVM (Windows, macOS, Linux, WebAssembly, Android).
         """
         if not os.path.exists(source_path):
             raise FileNotFoundError(f"Source file not found: {source_path}")
@@ -187,10 +242,12 @@ int main(int argc, char** argv) {{
         except Exception as e:
             raise BuildError(f"C VM compilation error: {str(e)}")
 
-        # Determine output paths
+        # Determine target architecture and file extensions
+        target_triple, default_ext = self.resolve_target(target)
         base_name = os.path.splitext(os.path.basename(source_path))[0]
         dir_name = os.path.dirname(os.path.abspath(source_path))
 
+        # Mode A: Emit C Source Code
         if emit_c:
             target_out = output_path or os.path.join(dir_name, f"{base_name}.c")
             c_code = self.generate_c_source(flat_inst, num_consts, str_consts, raylib=raylib, source_name=source_path)
@@ -209,15 +266,12 @@ int main(int argc, char** argv) {{
                 target="c_source"
             )
 
-        # Step 4: Native Binary Compilation
-        default_binary_name = base_name if sys.platform != "win32" else f"{base_name}.exe"
-        target_binary = output_path or os.path.join(dir_name, default_binary_name)
-
-        compiler_info = self.find_c_compiler()
+        # Step 4: Compiler Discovery (Prioritizes Clang/LLVM for cross-targeting)
+        compiler_info = self.find_c_compiler(target_triple=target_triple)
         if not compiler_info:
             raise BuildError(
-                "No C compiler found on this system (gcc, clang, or cl.exe).\n"
-                "Please install gcc or clang, or use '--emit-c' to generate standalone C source code."
+                "No C/LLVM compiler found on this system (clang, gcc, or cl.exe).\n"
+                "Please install clang ('sudo apt install clang' or 'brew install llvm'), or use '--emit-c'."
             )
 
         compiler_path, compiler_type = compiler_info
@@ -230,12 +284,57 @@ int main(int argc, char** argv) {{
             temp_c.write(c_code)
 
         try:
-            # Build compilation command
             opt_flag = f"-O{opt_level}" if opt_level in ("0", "1", "2", "3", "s") else "-O2"
             include_dir = os.path.join(os.path.dirname(__file__), "include")
 
-            if compiler_type in ("gcc", "clang"):
-                cmd = [compiler_path, opt_flag, "-s", temp_c_path, "-o", target_binary, "-lm"]
+            # Mode B: Emit LLVM IR (.ll)
+            if emit_llvm:
+                target_out = output_path or os.path.join(dir_name, f"{base_name}.ll")
+                if compiler_type != "clang":
+                    # Check if clang is available specifically for LLVM IR emission
+                    clang_path = shutil.which("clang")
+                    if clang_path:
+                        compiler_path = clang_path
+                    else:
+                        raise BuildError("--emit-llvm requires Clang/LLVM installed ('sudo apt install clang')")
+
+                cmd = [compiler_path, "-S", "-emit-llvm", opt_flag, temp_c_path, "-o", target_out]
+                if target_triple:
+                    cmd.extend(["--target=" + target_triple])
+                if os.path.exists(include_dir):
+                    cmd.extend(["-I", include_dir])
+
+                if verbose:
+                    print(f"[FoxVC Builder] Emitting LLVM IR via: {' '.join(cmd)}")
+
+                res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                if res.returncode != 0:
+                    raise BuildError(f"LLVM IR emission failed:\n{res.stderr.strip()}")
+
+                file_size = os.path.getsize(target_out)
+                return BuildResult(
+                    success=True,
+                    source_path=source_path,
+                    output_path=target_out,
+                    binary_size_bytes=file_size,
+                    bytecode_len=len(flat_inst),
+                    num_consts_len=len(num_consts),
+                    str_consts_len=len(str_consts),
+                    compiler_used=f"{os.path.basename(compiler_path)} (LLVM IR)",
+                    target=target_triple or "llvm_ir"
+                )
+
+            # Mode C: Native Binary Compilation (Host or Cross-OS)
+            default_binary_name = (base_name + default_ext) if default_ext else (
+                f"{base_name}.exe" if (target_triple and "windows" in target_triple) else base_name
+            )
+            target_binary = output_path or os.path.join(dir_name, default_binary_name)
+
+            if compiler_type in ("gcc", "clang", "mingw"):
+                cmd = [compiler_path, opt_flag]
+                if target_triple and compiler_type == "clang":
+                    cmd.extend(["--target=" + target_triple])
+                cmd.extend(["-s", temp_c_path, "-o", target_binary, "-lm"])
                 if os.path.exists(include_dir):
                     cmd.extend(["-I", include_dir])
                 if raylib:
@@ -258,18 +357,28 @@ int main(int argc, char** argv) {{
             )
 
             if result.returncode != 0:
+                err_msg = result.stderr.strip()
+                if "bits/libc-header-start.h" in err_msg or "bits/" in err_msg or "sysroot" in err_msg:
+                    err_msg += (
+                        f"\n\n💡 Cross-Compilation Tip:"
+                        f"\n   Cross-compiling to '{target_triple}' requires the target OS sysroot/headers."
+                        f"\n   - For Windows: install mingw-w64 ('sudo apt install mingw-w64')"
+                        f"\n   - For ARM64: install gcc-aarch64-linux-gnu"
+                        f"\n   - Or run with '--emit-c' to generate universal C source for the target OS."
+                    )
                 raise BuildError(
-                    f"C compiler compilation failed (exit code {result.returncode}):\n{result.stderr.strip()}"
+                    f"Compilation failed (exit code {result.returncode}):\n{err_msg}"
                 )
 
-            # Mark executable on POSIX
-            if sys.platform != "win32" and os.path.exists(target_binary):
+            # Mark executable on POSIX if compiling for Unix-like host
+            if sys.platform != "win32" and not (target_triple and "windows" in target_triple) and os.path.exists(target_binary):
                 try:
                     os.chmod(target_binary, 0o755)
                 except OSError:
                     pass
 
             file_size = os.path.getsize(target_binary)
+            target_desc = target_triple or "c_binary"
             return BuildResult(
                 success=True,
                 source_path=source_path,
@@ -278,8 +387,8 @@ int main(int argc, char** argv) {{
                 bytecode_len=len(flat_inst),
                 num_consts_len=len(num_consts),
                 str_consts_len=len(str_consts),
-                compiler_used=f"{os.path.basename(compiler_path)} ({compiler_type})",
-                target="c_binary"
+                compiler_used=f"{os.path.basename(compiler_path)} ({compiler_type} -> {target_desc})",
+                target=target_desc
             )
         finally:
             if os.path.exists(temp_c_path):
@@ -290,19 +399,23 @@ def build_standalone_binary(
     source_path: str,
     output_path: Optional[str] = None,
     emit_c: bool = False,
+    emit_llvm: bool = False,
+    target: Optional[str] = None,
     opt_level: str = "2",
     raylib: bool = False,
     verbose: bool = False
 ) -> str:
     """
-    Convenience function to compile a .fox source file into a native binary executable.
-    Returns the absolute path to the generated binary or C source.
+    Convenience function to compile a .fox source file into a native binary executable or LLVM IR.
+    Returns the absolute path to the generated binary, LLVM IR, or C source.
     """
     compiler = StandaloneCompiler()
     result = compiler.build(
         source_path=source_path,
         output_path=output_path,
         emit_c=emit_c,
+        emit_llvm=emit_llvm,
+        target=target,
         opt_level=opt_level,
         raylib=raylib,
         verbose=verbose
