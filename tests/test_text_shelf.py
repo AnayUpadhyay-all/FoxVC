@@ -10,14 +10,14 @@ class TestTextShelf(unittest.TestCase):
         self.text = get_text_shelf()
 
     def test_unicode_normalization_and_case_folding(self):
-        self.assertEqual(self.text["normalizeText"]("e\\u0301"), "é")
-        self.assertEqual(self.text["normalizeText"]("é", "NFD"), "e\\u0301")
+        self.assertEqual(self.text["normalizeText"]("e\u0301"), "é")
+        self.assertEqual(self.text["normalizeText"]("é", "NFD"), "e\u0301")
         self.assertEqual(self.text["caseFold"]("Straße"), "strasse")
 
     def test_word_and_line_counts(self):
-        self.assertEqual(self.text["wordCount"]("  one\\ttwo\\nthree  "), 3)
+        self.assertEqual(self.text["wordCount"]("  one\ttwo\nthree  "), 3)
         self.assertEqual(self.text["lineCount"](""), 0)
-        self.assertEqual(self.text["lineCount"]("one\\ntwo"), 2)
+        self.assertEqual(self.text["lineCount"]("one\ntwo"), 2)
 
     def test_truncate_includes_suffix_in_limit(self):
         self.assertEqual(self.text["truncateText"]("FoxVC language", 8), "FoxVC l…")
@@ -26,7 +26,7 @@ class TestTextShelf(unittest.TestCase):
 
     def test_wrap_validates_width(self):
         wrapped = self.text["wrapText"]("one two three", 7)
-        self.assertEqual(wrapped, "one two\\nthree")
+        self.assertEqual(wrapped, "one two\nthree")
         with self.assertRaises(ValueError):
             self.text["wrapText"]("text", 0)
 
@@ -46,7 +46,7 @@ class TestTextShelf(unittest.TestCase):
         self.assertEqual(self.text["reverseText"]("fox"), "xof")
         self.assertTrue(self.text["isAlpha"]("नमस्ते"))
         self.assertTrue(self.text["isDigit"]("१२३"))
-        self.assertTrue(self.text["isWhitespace"](" \\t"))
+        self.assertTrue(self.text["isWhitespace"](" \t"))
         self.assertFalse(self.text["isAlpha"](""))
 
     def test_public_api_is_stable(self):
