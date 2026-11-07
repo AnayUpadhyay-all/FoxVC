@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#07090e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>FoxCloud • Private Mobile Cloud Gaming</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #07090e;
+      --card-bg: rgba(16, 21, 33, 0.85);
+      --card-border: rgba(255, 122, 0, 0.2);
+      --orange: #ff7a00;
+      --orange-bright: #ff9429;
+      --cyan: #38bdf8;
+      --green: #34d399;
+      --red: #ef4444;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+    * {
+      box-sizing: border-box; margin: 0; padding: 0;
+      user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg); color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      overflow: hidden; touch-action: none;
+    }
+
+    /* APP CONTAINER */
+    #app {
+      width: 100vw; height: 100vh;
+      display: flex; flex-direction: column;
+      position: relative;
+    }
+
+    /* HEADER */
+    header {
+      padding: 12px 18px; background: rgba(11, 15, 25, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 50; flex-shrink: 0;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px;
+    }
+    .brand-icon {
+      width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, #ff7a00, #ff4500);
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .host-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.3);
+      padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--green);
+    }
+    .ping-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    /* VIEW 1: GAME LIBRARY */
+    #libraryView {
+      flex: 1; overflow-y: auto; padding: 18px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .banner {
+      background: linear-gradient(135deg, rgba(255, 122, 0, 0.15), rgba(16, 21, 33, 0.9));
+      border: 1px solid var(--card-border); border-radius: 14px; padding: 16px;
+    }
+    .banner h2 { font-size: 18px; font-weight: 800; margin-bottom: 4px; color: #fff; }
+    .banner p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    
+    .games-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;
+      padding-bottom: 30px;
+    }
+    .game-card {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+      padding: 16px; display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4); transition: transform 0.2s;
+    }
+    .game-card:active { transform: scale(0.98); }
+    .card-top { display: flex; justify-content: space-between; align-items: center; }
+    .game-badge {
+      font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 6px;
+      background: rgba(255, 122, 0, 0.15); color: var(--orange-bright); border: 1px solid rgba(255, 122, 0, 0.3);
+    }
+    .card-title { font-size: 17px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .card-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .card-ctrl { font-size: 11px; color: var(--cyan); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+    .play-btn {
+      background: linear-gradient(135deg, #ff7a00, #ea580c); color: #fff;
+      border: none; border-radius: 8px; padding: 10px; font-size: 14px; font-weight: 800;
+      cursor: pointer; box-shadow: 0 4px 15px rgba(255, 122, 0, 0.4);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+
+    /* VIEW 2: GAMEPLAY & CLOUD CANVAS */
+    #gameView {
+      flex: 1; width: 100vw; height: 100vh;
+      position: absolute; top: 0; left: 0;
+      background: #000; display: none; flex-direction: column;
+    }
+    #gameCanvas {
+      width: 100%; height: 100%; object-fit: contain;
+      background: #07090e; display: block;
+    }
+
+    /* IN-GAME TOP BAR */
+    .game-hud {
+      position: absolute; top: 0; left: 0; width: 100%;
+      padding: 10px 16px; display: flex; justify-content: space-between; align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85), transparent);
+      z-index: 100; pointer-events: auto;
+    }
+    .hud-title { font-weight: 800; font-size: 13px; color: #fff; }
+    .hud-stats { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--green); }
+    .exit-btn {
+      background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* ON-SCREEN VIRTUAL GAMEPAD */
+    .gamepad-layer {
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
+      pointer-events: none; z-index: 90;
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding: 20px 24px; box-sizing: border-box;
+    }
+    
+    /* LEFT JOYSTICK ZONE */
+    .joystick-zone {
+      width: 130px; height: 130px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05); border: 2px solid rgba(255, 255, 255, 0.15);
+      position: relative; pointer-events: auto;
+      touch-action: none;
+    }
+    .joystick-knob {
+      width: 54px; height: 54px; border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 122, 0, 0.8), rgba(234, 88, 12, 0.8));
+      border: 2px solid #ff9429; box-shadow: 0 0 15px rgba(255, 122, 0, 0.5);
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    /* RIGHT ACTION BUTTONS */
+    .action-zone {
+      display: flex; gap: 16px; align-items: flex-end;
+      pointer-events: auto;
+    }
+    .game-btn {
+      width: 65px; height: 65px; border-radius: 50%;
+      background: rgba(16, 21, 33, 0.85); border: 2px solid rgba(255, 255, 255, 0.2);
+      color: #fff; font-weight: 800; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+      touch-action: none; box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+      transition: transform 0.1s;
+    }
+    .game-btn:active, .game-btn.pressed {
+      transform: scale(0.92);
+    }
+    .btn-a {
+      border-color: #ff7a00; color: #ff7a00;
+      box-shadow: 0 0 15px rgba(255, 122, 0, 0.3);
+    }
+    .btn-a:active, .btn-a.pressed {
+      background: #ff7a00; color: #fff;
+    }
+    .btn-b {
+      border-color: #38bdf8; color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+    }
+    .btn-b:active, .btn-b.pressed {
+      background: #38bdf8; color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app">
+    <!-- TOP HEADER -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🦊</div>
+        <span>FoxCloud Gaming</span>
+      </div>
+      <div class="host-pill" id="hostPill">
+        <div class="ping-dot"></div>
+        <span id="hostStatus">Samsung F34 5G (Host)</span>
+      </div>
+    </header>
+
+    <!-- VIEW 1: GAME SELECTION LIBRARY -->
+    <div id="libraryView">
+      <div class="banner">
+        <h2>🎮 Your Private Cloud Console</h2>
+        <p>Rendered on Samsung Galaxy F34 5G • Streaming over Home Wi-Fi to your screen with zero installation.</p>
+      </div>
+
+      <div class="games-grid" id="gamesList">
+        <!-- Rendered by JS from GAME_CATALOG -->
+      </div>
+    </div>
+
+    <!-- VIEW 2: GAMEPLAY SCREEN -->
+    <div id="gameView">
+      <div class="game-hud">
+        <div class="hud-title" id="activeGameTitle">Space Defender 2026</div>
+        <div class="hud-stats" id="hudStats">60 FPS • 2ms Wi-Fi</div>
+        <button class="exit-btn" onclick="exitToLibrary()">✕ Exit Game</button>
+      </div>
+
+      <canvas id="gameCanvas"></canvas>
+
+      <!-- VIRTUAL GAMEPAD -->
+      <div class="gamepad-layer">
+        <!-- Left Joystick -->
+        <div class="joystick-zone" id="joystickZone">
+          <div class="joystick-knob" id="joystickKnob"></div>
+        </div>
+
+        <!-- Right Buttons -->
+        <div class="action-zone">
+          <div class="game-btn btn-b" id="btnB">B</div>
+          <div class="game-btn btn-a" id="btnA">A</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAD EMBEDDED GAMES -->
+  <script src="/games.js"></script>
+  <script>
+    // State
+    let activeGame = null;
+    let animFrame = null;
+    let lastTime = performance.now();
+
+    const inputState = {
+      stickX: 0,
+      stickY: 0,
+      btnA: false,
+      btnA_pressed: false,
+      btnB: false,
+      btnB_pressed: false
+    };
+
+    // Render Library
+    function initLibrary() {
+      const container = document.getElementById("gamesList");
+      container.innerHTML = "";
+      GAME_CATALOG.forEach(g => {
+        const card = document.createElement("div");
+        card.className = "game-card";
+        card.innerHTML = `
+          <div class="card-top">
+            <div class="game-badge">${g.badge}</div>
+            <span style="font-size:12px; color:#64748b;">${g.genre}</span>
+          </div>
+          <div class="card-title">${g.icon} ${g.title}</div>
+          <div class="card-desc">${g.desc}</div>
+          <div class="card-ctrl">🎮 ${g.controls}</div>
+          <button class="play-btn" onclick="launchGame('${g.id}')">
+            <span>▶ PLAY CLOUD STREAM</span>
+          </button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Launch Game
+    function launchGame(gameId) {
+      sfx.init();
+      const canvas = document.getElementById("gameCanvas");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const found = GAME_CATALOG.find(g => g.id === gameId);
+      if (found) {
+        document.getElementById("activeGameTitle").innerText = found.icon + " " + found.title;
+      }
+
+      if (gameId === "space_defender") activeGame = new SpaceDefender(canvas);
+      else if (gameId === "cyber_snake") activeGame = new CyberSnake(canvas);
+      else if (gameId === "fox_runner") activeGame = new FoxRunner(canvas);
+      else if (gameId === "cyber_pong") activeGame = new CyberPong(canvas);
+
+      document.getElementById("libraryView").style.display = "none";
+      document.getElementById("gameView").style.display = "flex";
+
+      // Enter Fullscreen if available
+      try {
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch (e) {}
+
+      lastTime = performance.now();
+      gameLoop();
+    }
+
+    // Exit Game
+    function exitToLibrary() {
+      if (animFrame) cancelAnimationFrame(animFrame);
+      activeGame = null;
+      document.getElementById("gameView").style.display = "none";
+      document.getElementById("libraryView").style.display = "flex";
+      try {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+      } catch (e) {}
+    }
+
+    // Game Loop
+    let fpsFrames = 0;
+    let fpsTimer = performance.now();
+
+    function gameLoop(now = performance.now()) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      // Poll Physical Gamepad if connected to phone
+      pollGamepads();
+
+      if (activeGame) {
+        activeGame.update(inputState, dt);
+        activeGame.render();
+      }
+
+      // Reset single-frame pressed flags
+      inputState.btnA_pressed = false;
+      inputState.btnB_pressed = false;
+
+      // FPS Counter
+      fpsFrames++;
+      if (now - fpsTimer > 1000) {
+        document.getElementById("hudStats").innerText = fpsFrames + " FPS • 2ms Wi-Fi";
+        fpsFrames = 0;
+        fpsTimer = now;
+      }
+
+      animFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // Hardware Gamepad Support (Bluetooth / OTG Controllers)
+    function pollGamepads() {
+      const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+      if (!pads || !pads[0]) return;
+      const gp = pads[0];
+
+      // Left Stick / D-Pad
+      if (Math.abs(gp.axes[0]) > 0.15) inputState.stickX = gp.axes[0];
+      if (Math.abs(gp.axes[1]) > 0.15) inputState.stickY = gp.axes[1];
+
+      // D-Pad buttons
+      if (gp.buttons[14] && gp.buttons[14].pressed) inputState.stickX = -1;
+      if (gp.buttons[15] && gp.buttons[15].pressed) inputState.stickX = 1;
+      if (gp.buttons[12] && gp.buttons[12].pressed) inputState.stickY = -1;
+      if (gp.buttons[13] && gp.buttons[13].pressed) inputState.stickY = 1;
+
+      // A / B Buttons
+      if (gp.buttons[0] && gp.buttons[0].pressed) {
+        if (!inputState.btnA) inputState.btnA_pressed = true;
+        inputState.btnA = true;
+      } else if (!touchBtnA) {
+        inputState.btnA = false;
+      }
+    }
+
+    // Virtual Touch Joystick Implementation
+    const jZone = document.getElementById("joystickZone");
+    const jKnob = document.getElementById("joystickKnob");
+    let joyTouchId = null;
+    let joyCenter = { x: 0, y: 0 };
+    const maxRadius = 45;
+
+    jZone.addEventListener("touchstart", e => {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      joyTouchId = touch.identifier;
+      const rect = jZone.getBoundingClientRect();
+      joyCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      handleJoyMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    window.addEventListener("touchmove", e => {
+      if (joyTouchId === null) return;
+      for (let t of e.changedTouches) {
+        if (t.identifier === joyTouchId) {
+          e.preventDefault();
+          handleJoyMove(t.clientX, t.clientY);
+          break;
+        }
+      }
+    }, { passive: false });
+
+    function endJoy(e) {
+      if (joyTouchId === null) return;
+      for (let t of e.changedTouches) {
+        if (t.identifier === joyTouchId) {
+          joyTouchId = null;
+          inputState.stickX = 0;
+          inputState.stickY = 0;
+          jKnob.style.transform = `translate(-50%, -50%)`;
+          break;
+        }
+      }
+    }
+    window.addEventListener("touchend", endJoy);
+    window.addEventListener("touchcancel", endJoy);
+
+    function handleJoyMove(clientX, clientY) {
+      let dx = clientX - joyCenter.x;
+      let dy = clientY - joyCenter.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+      }
+
+      inputState.stickX = dx / maxRadius;
+      inputState.stickY = dy / maxRadius;
+      jKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    }
+
+    // Touch Buttons (A & B) with Haptic Vibration
+    let touchBtnA = false;
+    let touchBtnB = false;
+
+    function bindButton(elId, key, pressedKey) {
+      const el = document.getElementById(elId);
+      el.addEventListener("touchstart", e => {
+        e.preventDefault();
+        inputState[key] = true;
+        inputState[pressedKey] = true;
+        el.classList.add("pressed");
+        if (navigator.vibrate) navigator.vibrate(15);
+      }, { passive: false });
+
+      const release = e => {
+        e.preventDefault();
+        inputState[key] = false;
+        el.classList.remove("pressed");
+      };
+      el.addEventListener("touchend", release);
+      el.addEventListener("touchcancel", release);
+    }
+
+    bindButton("btnA", "btnA", "btnA_pressed");
+    bindButton("btnB", "btnB", "btnB_pressed");
+
+    // Keyboard controls for testing on PC
+    window.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft" || e.key === "a") inputState.stickX = -1;
+      if (e.key === "ArrowRight" || e.key === "d") inputState.stickX = 1;
+      if (e.key === "ArrowUp" || e.key === "w") inputState.stickY = -1;
+      if (e.key === "ArrowDown" || e.key === "s") inputState.stickY = 1;
+      if (e.key === " " || e.key === "j") {
+        if (!inputState.btnA) inputState.btnA_pressed = true;
+        inputState.btnA = true;
+      }
+      if (e.key === "k" || e.key === "Shift") {
+        if (!inputState.btnB) inputState.btnB_pressed = true;
+        inputState.btnB = true;
+      }
+    });
+    window.addEventListener("keyup", e => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "a" || e.key === "d") inputState.stickX = 0;
+      if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "w" || e.key === "s") inputState.stickY = 0;
+      if (e.key === " " || e.key === "j") inputState.btnA = false;
+      if (e.key === "k" || e.key === "Shift") inputState.btnB = false;
+    });
+
+    // Window Resize Handler
+    window.addEventListener("resize", () => {
+      const canvas = document.getElementById("gameCanvas");
+      if (canvas && activeGame) {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+    });
+
+    // Initialize Library
+    initLibrary();
+  </script>
+</body>
+</html>

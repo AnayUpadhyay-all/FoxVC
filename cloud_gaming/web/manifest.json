@@ -1,0 +1,17 @@
+{
+  "name": "FoxCloud Gaming",
+  "short_name": "FoxCloud",
+  "description": "Private Cloud Gaming Console for Mobile & TV",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape-primary",
+  "background_color": "#07090e",
+  "theme_color": "#ff7a00",
+  "icons": [
+    {
+      "src": "/assets/foxvc-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}

@@ -136,6 +136,7 @@ def show_cli_help():
     {t['dim']}  Options: --target <os> (windows, macos, linux, wasm, android)
              --emit-llvm (emit .ll IR) | --emit-c | -O 2{RESET}
   {t['primary']}mobile [port]{RESET}           Launch local Mobile Studio for Android & iOS 📱
+  {t['primary']}cloud [port]{RESET}            Launch Private Cloud Gaming Server (Stream to old phones) 🎮
 
 {t['accent']}Developer Tooling & Quality Assurance:{RESET}
   {t['primary']}fmt <path> [-w]{RESET}          Canonical auto-formatter (4-space indentation) 🧹
@@ -622,6 +623,16 @@ def main():
 
         network_mode = ("--network" in args) or ("--mobile" in args) or (cmd == "mobile")
         run_server(host="0.0.0.0" if network_mode else "127.0.0.1", port=port, network=network_mode)
+        return
+
+    if cmd == "cloud":
+        port = 8080
+        for a in args[1:]:
+            if a.isdigit():
+                port = int(a)
+                break
+        from cloud_gaming.server import start_server
+        start_server(port)
         return
 
     if cmd == "check":
