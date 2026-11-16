@@ -213,6 +213,7 @@ FoxVC guarantees language identity stability: **these 25 keywords are permanent.
 | **Language Server** | `foxvc lsp` | Full JSON-RPC 2.0 LSP daemon with real-time squigglies, autocomplete & hover | ✅ Completed |
 | **CVM 2.0 Native Parity** | Pure C Objects | Native struct member allocation & lookups on 8MB linear arena in `foxvm.c` | ✅ Completed |
 | **Standard Shelves** | `data`, `audio`, `socket` | Native CSV/JSON/TOML, PCM WAV audio synthesis, and raw WebSocket framing | ✅ Completed |
+| **Unicode & AI Shelves** | `text` & `ai` | Full Unicode normalization, slugify, and zero-dependency local & cloud LLM agent orchestration | ✅ Completed |
 | **IDE Extension** | VS Code / Cursor | Official FoxVC marketplace extension with language client and TextMate grammar | ✅ Completed |
 
 ---
@@ -248,6 +249,26 @@ Because FoxVC is clean, compact, and deterministic, **you can learn the architec
 * 🚀 **[CONTRIBUTING.md](CONTRIBUTING.md)** — How to set up, test, and contribute.
 * 📦 **[How to Build a Shelf in 10 Minutes](docs/HOW_TO_CREATE_A_SHELF.md)** — Step-by-step tutorial to add new libraries.
 * 🏷️ **Good First Issues:** Search our repository issues for `good first issue` to pick up beginner-friendly tasks (regex shelf, base64 encoding, tutorials, and editor themes).
+
+---
+
+## 👤 Developer & Founder
+
+<div align="center">
+
+### **Created by Anay Upadhyay**
+*16-year-old student, systems enthusiast, and compiler builder*
+
+[![GitHub: AnayUpadhyay-all](https://img.shields.io/badge/GitHub-AnayUpadhyay--all-181717?style=flat&logo=github)](https://github.com/AnayUpadhyay-all)
+[![Project: FoxVC](https://img.shields.io/badge/Language-FoxVC%20v1.0-FF7A00?style=flat)](https://github.com/AnayUpadhyay-all/FoxVC)
+
+</div>
+
+> *"I’m 16 years old and currently studying in high school. Outside of classes and homework, my obsession is low-level systems engineering, C programming, and language design.*
+>
+> *I started building FoxVC because I was tired of watching modern programming languages get weighed down by bloat, endless syntax rules, and hundreds of megabytes of runtime dependencies just to run a basic program. I wanted something pure: exactly 25 deterministic keywords, an 8MB C runtime arena, sub-millisecond execution, and standalone binaries that compile down to 14 KB.*
+>
+> *Building a full compiler, virtual machine, and WebAssembly engine completely from scratch while balancing school has been a huge journey. FoxVC is 100% independent and open-source under the MIT license. Whether you're a veteran systems engineer or someone curious about language internals, I’d love for you to explore the code, test the playground, and share your feedback."*
 
 ---
 
