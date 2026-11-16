@@ -564,7 +564,7 @@ class FoxVCStudio:
             self.editor.tag_remove(tag, "1.0", tk.END)
 
         fox_keywords = r"\b(act|emit|pack|mold|pick|alt|otherwise|pulse|cycle|spin|halt|skip|say|ask|guard|trap|fuse|lock|shift|blank|aye|nay|also|either|deny)\b"
-        builtin_names = r"\b(push|pop|remove_at|sin|cos|sqrt|rnd|time|len|str|int|float|shelf|math|system|file|crypto|net|db|graphics|text|data|audio|socket)\b"
+        builtin_names = r"\b(push|pop|remove_at|sin|cos|sqrt|rnd|time|len|str|int|float|shelf|math|system|file|crypto|net|db|graphics|text|data|audio|socket|ai)\b"
 
         for m in re.finditer(r'"[^"\\]*(?:\\.[^"\\]*)*"', code):
             self.editor.tag_add("str", f"1.0 + {m.start()} chars", f"1.0 + {m.end()} chars")

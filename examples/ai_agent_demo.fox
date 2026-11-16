@@ -1,0 +1,24 @@
+# ==============================================================================
+# FoxVC AI Agent & LLM Orchestration Demo (fuse ai)
+# Supports both Local models (Ollama / llama.cpp) and Cloud APIs (Groq / Gemini)
+# ==============================================================================
+
+fuse ai
+
+say "🦊 Initializing FoxVC AI Agent Engine..."
+
+# 1. Quick check: Is local Ollama running?
+is_local_ready = aiIsOnline("ollama")
+pick is_local_ready == 1
+    say "✅ Local Ollama instance detected at http://localhost:11434"
+otherwise
+    say "ℹ️ Local Ollama offline. Switching to Cloud AI provider mode (Groq / Gemini / OpenAI)."
+
+# 2. Creating an Autonomous DevOps Supervisor Agent
+system_prompt = "You are an autonomous DevOps assistant. Keep answers under 2 concise sentences."
+
+# Use local llama3 or cloud Groq/Gemini with zero local PC load:
+agent = aiAgent(system_prompt, "llama-3.3-70b-versatile", "groq")
+
+say "🤖 Agent created with persona: " + system_prompt
+say "Ready to process prompts via `agent.ask('...')`!"

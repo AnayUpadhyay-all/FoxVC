@@ -16,6 +16,7 @@ from .data import get_data_shelf
 from .audio import get_audio_shelf
 from .socket import get_socket_shelf
 from .text import get_text_shelf
+from .ai import get_ai_shelf
 
 
 def get_standard_shelf(policy: Optional[SecurityPolicy] = None, sandboxed: bool = False, allowed_dir: Optional[str] = None) -> Dict[str, Any]:
@@ -43,5 +44,6 @@ def get_standard_shelf(policy: Optional[SecurityPolicy] = None, sandboxed: bool 
     shelf.update(get_audio_shelf(policy))
     shelf.update(get_socket_shelf(policy))
     shelf.update(get_text_shelf())
+    shelf.update(get_ai_shelf())
 
     return shelf

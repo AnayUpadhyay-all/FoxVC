@@ -121,6 +121,7 @@ from engine.shelves.data import get_data_shelf
 from engine.shelves.audio import get_audio_shelf
 from engine.shelves.socket import get_socket_shelf
 from engine.shelves.text import get_text_shelf
+from engine.shelves.ai import get_ai_shelf
 from engine.shelves.compatibility import get_standard_shelf
 
 __all__ = [
@@ -137,6 +138,7 @@ __all__ = [
     "get_audio_shelf",
     "get_socket_shelf",
     "get_text_shelf",
+    "get_ai_shelf",
     "fox_pack",
     "fox_push",
     "fox_pop",

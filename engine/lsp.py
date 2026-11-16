@@ -54,7 +54,8 @@ SHELVES_DOCS = {
     "data": "Data serialization and parsing for JSON, CSV, TOML, and YAML.",
     "audio": "Audio playback, streaming, and sound synthesis.",
     "socket": "Raw asynchronous TCP and WebSocket networking.",
-    "text": "Unicode-aware text processing, normalization, counting, wrapping, and slug generation."
+    "text": "Unicode-aware text processing, normalization, counting, wrapping, and slug generation.",
+    "ai": "AI & LLM agent orchestration for local models (Ollama) and cloud APIs (Groq, OpenAI, Gemini)."
 }
 
 

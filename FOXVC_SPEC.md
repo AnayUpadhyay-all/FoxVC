@@ -72,8 +72,9 @@ The standard library is organized into domain-specific shelves with lazy loading
 * `engine/shelves/crypto.py`: Hashing (`hashSha256`, `hashSha512`, `hashMd5`, `hmacSha256`), token and UUID generation (`uuid`, `secureToken`), and binary encoders (`base64Encode`, `base64Decode`, `hexEncode`, `hexDecode`).
 * `engine/shelves/net.py`: REST client (`httpGet`, `httpPost`, `httpPut`, `httpDelete`, `fetch`, `urlEncode`, `urlDecode`) and microservice HTTP server (`httpServer`, `httpRoute`, `httpResponse`, `httpStart`, `httpStop`).
 * `engine/shelves/db.py`: Embedded SQLite database (`dbOpen`, `dbExecute`, `dbQuery`, `dbClose`).
-* `engine/shelves/system.py`: Environment (`getEnv`, `setEnv`, `listEnv`, `execCmd`, `platform`, `cpuCount`), clock (`time`, `sleep`), and bounded background concurrency (`spawn`, `awaitTask`).
+* `engine/shelves/system.py`: Environment (`getEnv`, `setEnv`, `listEnv`, `execCmd`, `exec`, `execOutput`, `diskUsage`, `memoryUsage`, `which`, `httpPing`, `isProcessRunning`, `platform`, `cpuCount`), clock (`time`, `sleep`), and bounded background concurrency (`spawn`, `awaitTask`).
 * `engine/shelves/text.py`: Unicode-aware text processing (`normalizeText`, `caseFold`, `wordCount`, `lineCount`, `truncateText`, `wrapText`, `slugify`, `textLength`, `codePointAt`, `fromCodePoint`, `reverseText`, `isAlpha`, `isDigit`, `isWhitespace`). Uses only the Python standard library. Text indexing and length are defined in Unicode code points, not grapheme clusters.
+* `engine/shelves/ai.py`: AI & LLM agent orchestration (`aiPrompt`, `aiChat`, `aiAgent`, `aiIsOnline`). Zero-dependency HTTP interface supporting local Ollama (`localhost:11434`) and cloud providers (Groq, OpenAI, Google Gemini, OpenRouter, DeepSeek).
 * `engine/shelves/compatibility.py`: Stable facade assembling `get_standard_shelf()`.
 
 ---
