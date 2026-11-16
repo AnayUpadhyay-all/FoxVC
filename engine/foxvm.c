@@ -11,8 +11,22 @@
 #define MAX_REGS 256
 #define MAX_VARS 512
 #define MAX_CALL_STACK 1024
-#define MAX_PACKS 4096
-#define ARENA_SIZE_BYTES (8 * 1024 * 1024) // 8 MB linear arena
+#define INITIAL_PACK_CAPACITY 4096
+#define MAX_PACK_CAPACITY 65536
+
+// Tiered Chained Memory Arena configuration
+#define PRIMARY_ARENA_SIZE   (8 * 1024 * 1024)   // Tier 1: 8 MB static BSS arena (1 CPU cycle bump)
+#define STANDBY_ARENA_SIZE   (8 * 1024 * 1024)   // Tier 2: 8 MB pre-warmed standby BSS arena (0 cost until touched)
+#define CHUNK_ARENA_SIZE     (8 * 1024 * 1024)   // Tier 3: 8 MB dynamic chained chunks
+#define MAX_ARENA_CEILING    (64 * 1024 * 1024)  // Tier 4: 64 MB runaway loop memory safety ceiling
+
+#if defined(__GNUC__) || defined(__clang__)
+#define FOX_LIKELY(x)   __builtin_expect(!!(x), 1)
+#define FOX_UNLIKELY(x) __builtin_expect(!!(x), 0)
+#else
+#define FOX_LIKELY(x)   (x)
+#define FOX_UNLIKELY(x) (x)
+#endif
 
 typedef struct {
     double* data;
@@ -26,9 +40,6 @@ typedef struct {
     double saved_regs[MAX_REGS];
 } FoxFrame;
 
-static FoxPack heap_packs[MAX_PACKS];
-static int pack_count = 0;
-
 typedef struct {
     int mold_id;
     int field_count;
@@ -36,31 +47,167 @@ typedef struct {
     double field_vals[32];
 } FoxObject;
 
-static FoxObject heap_objects[MAX_PACKS];
+// Dynamic Pack and Object Tables (Starting with static fast-path buffers)
+static FoxPack heap_packs_static[INITIAL_PACK_CAPACITY];
+static FoxPack* heap_packs = heap_packs_static;
+static int pack_capacity = INITIAL_PACK_CAPACITY;
+static int pack_count = 0;
+
+static FoxObject heap_objects_static[INITIAL_PACK_CAPACITY];
+static FoxObject* heap_objects = heap_objects_static;
+static int object_capacity = INITIAL_PACK_CAPACITY;
 static int object_count = 0;
 
-static char g_memory_arena[ARENA_SIZE_BYTES];
-static size_t g_arena_offset = 0;
+// Tiered Arena Blocks
+typedef struct ArenaBlock {
+    char* data;
+    size_t capacity;
+    size_t offset;
+    int is_dynamic;
+    struct ArenaBlock* next;
+} ArenaBlock;
 
-void reset_memory_arena(void) {
-    g_arena_offset = 0;
+static char g_primary_arena[PRIMARY_ARENA_SIZE];
+static char g_standby_arena[STANDBY_ARENA_SIZE];
+
+static ArenaBlock g_primary_block = { g_primary_arena, PRIMARY_ARENA_SIZE, 0, 0, NULL };
+static ArenaBlock g_standby_block = { g_standby_arena, STANDBY_ARENA_SIZE, 0, 0, NULL };
+
+static ArenaBlock* g_current_block = &g_primary_block;
+static ArenaBlock* g_dynamic_chain = NULL;
+static size_t g_total_arena_allocated = 0;
+static int g_standby_used = 0;
+
+static void reset_pack_tables(void) {
+    if (heap_packs != heap_packs_static) {
+        free(heap_packs);
+        heap_packs = heap_packs_static;
+        pack_capacity = INITIAL_PACK_CAPACITY;
+    }
     pack_count = 0;
+
+    if (heap_objects != heap_objects_static) {
+        free(heap_objects);
+        heap_objects = heap_objects_static;
+        object_capacity = INITIAL_PACK_CAPACITY;
+    }
     object_count = 0;
 }
 
-static void* arena_alloc(size_t size) {
-    // 8-byte alignment for doubles
-    size_t aligned_size = (size + 7) & ~((size_t)7);
-    if (g_arena_offset + aligned_size > ARENA_SIZE_BYTES) {
+void reset_memory_arena(void) {
+    // Free all dynamically chained chunks
+    ArenaBlock* curr = g_dynamic_chain;
+    while (curr) {
+        ArenaBlock* next = curr->next;
+        if (curr->data) {
+            free(curr->data);
+        }
+        free(curr);
+        curr = next;
+    }
+    g_dynamic_chain = NULL;
+
+    // Reset primary and pre-warmed standby blocks
+    g_primary_block.offset = 0;
+    g_standby_block.offset = 0;
+    g_current_block = &g_primary_block;
+    g_standby_used = 0;
+    g_total_arena_allocated = 0;
+
+    // Reset dynamic pack and object tables
+    reset_pack_tables();
+}
+
+static void* arena_alloc_slow(size_t aligned_size) {
+    // Tier 2: Pre-Warmed Standby Arena Rollover
+    // Activates in 1 instruction with zero heap syscall latency
+    if (!g_standby_used) {
+        g_standby_used = 1;
+        g_current_block = &g_standby_block;
+        if (FOX_LIKELY(g_current_block->offset + aligned_size <= g_current_block->capacity)) {
+            void* ptr = (void*)(g_current_block->data + g_current_block->offset);
+            g_current_block->offset += aligned_size;
+            g_total_arena_allocated += aligned_size;
+            return ptr;
+        }
+    }
+
+    // Tier 4: Memory Safety Ceiling (64 MB)
+    // Prevents runaway infinite loops from exhausting host system RAM
+    if (FOX_UNLIKELY(g_total_arena_allocated + aligned_size > MAX_ARENA_CEILING)) {
+        fprintf(stderr, "[FoxVC Safety Trap]: Memory ceiling reached (64 MB). Runaway loop protected.\n");
         return NULL;
     }
-    void* ptr = (void*)&g_memory_arena[g_arena_offset];
-    g_arena_offset += aligned_size;
-    return ptr;
+
+    // Tier 3: Dynamic Chained Arena Chunks
+    size_t chunk_cap = CHUNK_ARENA_SIZE;
+    if (aligned_size > chunk_cap) {
+        chunk_cap = aligned_size;
+    }
+    if (g_total_arena_allocated + chunk_cap > MAX_ARENA_CEILING) {
+        chunk_cap = MAX_ARENA_CEILING - g_total_arena_allocated;
+        if (aligned_size > chunk_cap) {
+            fprintf(stderr, "[FoxVC Safety Trap]: Memory ceiling reached (64 MB). Runaway loop protected.\n");
+            return NULL;
+        }
+    }
+
+    ArenaBlock* new_block = (ArenaBlock*)malloc(sizeof(ArenaBlock));
+    if (!new_block) return NULL;
+    new_block->data = (char*)malloc(chunk_cap);
+    if (!new_block->data) {
+        free(new_block);
+        return NULL;
+    }
+
+    new_block->capacity = chunk_cap;
+    new_block->offset = aligned_size;
+    new_block->is_dynamic = 1;
+    new_block->next = g_dynamic_chain;
+    g_dynamic_chain = new_block;
+    g_current_block = new_block;
+    g_total_arena_allocated += aligned_size;
+
+    return (void*)new_block->data;
+}
+
+static inline void* arena_alloc(size_t size) {
+    // 8-byte alignment for 64-bit doubles
+    size_t aligned_size = (size + 7) & ~((size_t)7);
+
+    // Fast path: single pointer bump within current active block (1 CPU cycle)
+    if (FOX_LIKELY(g_current_block->offset + aligned_size <= g_current_block->capacity)) {
+        void* ptr = (void*)(g_current_block->data + g_current_block->offset);
+        g_current_block->offset += aligned_size;
+        g_total_arena_allocated += aligned_size;
+        return ptr;
+    }
+
+    // Slow path: rollover to standby block or allocate dynamic chunk
+    return arena_alloc_slow(aligned_size);
 }
 
 int allocate_pack(int initial_cap) {
-    if (pack_count >= MAX_PACKS) return -1;
+    if (pack_count >= pack_capacity) {
+        if (pack_capacity >= MAX_PACK_CAPACITY) {
+            fprintf(stderr, "[FoxVC Safety Trap]: Pack table capacity limit reached (%d packs).\n", MAX_PACK_CAPACITY);
+            return -1;
+        }
+        int new_cap = pack_capacity * 2;
+        if (new_cap > MAX_PACK_CAPACITY) new_cap = MAX_PACK_CAPACITY;
+
+        FoxPack* new_packs;
+        if (heap_packs == heap_packs_static) {
+            new_packs = (FoxPack*)malloc(new_cap * sizeof(FoxPack));
+            if (!new_packs) return -1;
+            memcpy(new_packs, heap_packs_static, pack_count * sizeof(FoxPack));
+        } else {
+            new_packs = (FoxPack*)realloc(heap_packs, new_cap * sizeof(FoxPack));
+            if (!new_packs) return -1;
+        }
+        heap_packs = new_packs;
+        pack_capacity = new_cap;
+    }
     int cap = initial_cap > 0 ? initial_cap : 16;
     double* data = (double*)arena_alloc(cap * sizeof(double));
     if (!data) return -1;
@@ -71,6 +218,33 @@ int allocate_pack(int initial_cap) {
     heap_packs[id].data = data;
     memset(heap_packs[id].data, 0, cap * sizeof(double));
     return id;
+}
+
+static int allocate_object(int count) {
+    if (object_count >= object_capacity) {
+        if (object_capacity >= MAX_PACK_CAPACITY) {
+            fprintf(stderr, "[FoxVC Safety Trap]: Object table capacity limit reached (%d objects).\n", MAX_PACK_CAPACITY);
+            return -1;
+        }
+        int new_cap = object_capacity * 2;
+        if (new_cap > MAX_PACK_CAPACITY) new_cap = MAX_PACK_CAPACITY;
+
+        FoxObject* new_objs;
+        if (heap_objects == heap_objects_static) {
+            new_objs = (FoxObject*)malloc(new_cap * sizeof(FoxObject));
+            if (!new_objs) return -1;
+            memcpy(new_objs, heap_objects_static, object_count * sizeof(FoxObject));
+        } else {
+            new_objs = (FoxObject*)realloc(heap_objects, new_cap * sizeof(FoxObject));
+            if (!new_objs) return -1;
+        }
+        heap_objects = new_objs;
+        object_capacity = new_cap;
+    }
+    int oid = object_count++;
+    heap_objects[oid].mold_id = 0;
+    heap_objects[oid].field_count = (count > 32) ? 32 : count;
+    return oid;
 }
 
 #ifdef FOX_ENABLE_RAYLIB
@@ -147,6 +321,10 @@ double dispatch_native(const char* name, double* args, int argc) {
         SetTargetFPS((int)args[0]);
         return 1.0;
     }
+#else
+    (void)name;
+    (void)args;
+    (void)argc;
 #endif
     return 0.0;
 }
@@ -246,7 +424,11 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
 #ifdef FOX_ENABLE_RAYLIB
                 if (IsWindowReady()) CloseWindow();
 #endif
-                return regs[0];
+                {
+                    double ret = regs[0];
+                    reset_memory_arena();
+                    return ret;
+                }
             }
             case 18: { // GET_TIME
                 int d = inst[ip++];
@@ -259,7 +441,10 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                 int f_addr = inst[ip++];
                 int argc = inst[ip++];
                 int res_reg = inst[ip++];
-                if (call_sp >= MAX_CALL_STACK) return -999.0;
+                if (call_sp >= MAX_CALL_STACK) {
+                    reset_memory_arena();
+                    return -999.0;
+                }
                 for (int i = 0; i < MAX_REGS; i++) call_stack[call_sp].saved_regs[i] = regs[i];
                 call_stack[call_sp].return_ip = ip + argc;
                 call_stack[call_sp].target_reg = res_reg;
@@ -273,7 +458,10 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
             case 20: { // RETURN
                 int v_reg = inst[ip++];
                 double val = regs[v_reg];
-                if (call_sp <= 0) return val;
+                if (call_sp <= 0) {
+                    reset_memory_arena();
+                    return val;
+                }
                 call_sp--;
                 int ret_ip = call_stack[call_sp].return_ip;
                 int tgt_reg = call_stack[call_sp].target_reg;
@@ -298,7 +486,11 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
 #ifdef FOX_ENABLE_RAYLIB
                 if (IsWindowReady()) CloseWindow();
 #endif
-                return regs[s];
+                {
+                    double ret = regs[s];
+                    reset_memory_arena();
+                    return ret;
+                }
             }
             case 24: { // SIN
                 int d = inst[ip++]; int s = inst[ip++];
@@ -378,6 +570,7 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                 int cond_reg = inst[ip++];
                 if (!regs[cond_reg]) {
                     fprintf(stderr, "FoxVM Panic: Guard assertion failed!\n");
+                    reset_memory_arena();
                     return -1.0;
                 }
                 break;
@@ -385,16 +578,19 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
             case 36: { // BUILD_PACK / MOLD_NEW: [36, dst_reg, field_count, k0, v0_reg, k1, v1_reg...]
                 int dst = inst[ip++];
                 int count = inst[ip++];
-                if (object_count < MAX_PACKS) {
-                    int oid = object_count++;
-                    heap_objects[oid].mold_id = 0;
-                    heap_objects[oid].field_count = count;
-                    for (int f = 0; f < count && f < 32; f++) {
-                        heap_objects[oid].field_keys[f] = inst[ip++];
-                        heap_objects[oid].field_vals[f] = regs[inst[ip++]];
+                int oid = allocate_object(count);
+                if (oid >= 0) {
+                    for (int f = 0; f < count; f++) {
+                        int k = inst[ip++];
+                        int vr = inst[ip++];
+                        if (f < 32) {
+                            heap_objects[oid].field_keys[f] = k;
+                            heap_objects[oid].field_vals[f] = regs[vr];
+                        }
                     }
                     regs[dst] = (double)oid;
                 } else {
+                    ip += count * 2;
                     regs[dst] = 0.0;
                 }
                 break;
@@ -445,5 +641,9 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
 #ifdef FOX_ENABLE_RAYLIB
     if (IsWindowReady()) CloseWindow();
 #endif
-    return regs[0];
+    {
+        double ret = regs[0];
+        reset_memory_arena();
+        return ret;
+    }
 }

@@ -51,6 +51,13 @@
 
 ## [0.6.0-alpha] - 2026-11-04
 ### Added
+- **Tiered Chained Memory Arena & Safety Trap (`engine/foxvm.c`):**
+  - Implemented Tier 1 (8MB static primary arena) with single-cycle pointer bump fast-path allocation.
+  - Implemented Tier 2 (8MB pre-warmed standby BSS arena) that activates in a single CPU instruction with 0 heap syscall latency and 0 physical RAM usage until touched.
+  - Implemented Tier 3 (dynamically chained 8MB arena chunks) allowing programs to dynamically expand beyond 16MB up to a 64MB memory safety ceiling.
+  - Implemented Tier 4 Memory Safety Ceiling (64MB) trap that catches runaway infinite loops and prints an explicit safety trap notification before host system memory exhaustion.
+  - Dynamically scaled pack and object table capacities from 4,096 up to 65,536 entries.
+  - Full RAII lifecycle cleanup ensuring zero lingering heap memory between runs.
 - **Developer Tooling CLI Suite:**
   - `foxvc fmt <path> [-w / --write] [-c / --check]`: Canonical auto-formatter enforcing 4-space indentation and binary operator spacing while strictly preserving string literals.
   - `foxvc lint <path> [--strict]`: Static code analyzer checking for unmutated `shift` variables, unread identifiers, dead code after `emit`/`halt`, and locked mutations.

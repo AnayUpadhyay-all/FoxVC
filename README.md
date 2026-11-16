@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Playground Live](https://img.shields.io/badge/WASM_Playground-Live_in_Browser-orange.svg)](https://anayupadhyay-all.github.io/FoxVC/)
-[![Tests Passing](https://img.shields.io/badge/Tests-119%2F119%20Passing-brightgreen.svg)](#-verification--tests)
+[![Tests Passing](https://img.shields.io/badge/Tests-125%2F125%20Passing-brightgreen.svg)](#-verification--tests)
 [![Language Spec](https://img.shields.io/badge/Language%20Spec-v1.0.0-purple.svg)](FOXVC_SPEC.md)
 [![Engine Version](https://img.shields.io/badge/FoxVM%20Engine-v0.6.0--alpha-blue.svg)](FOXVC_CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-green.svg)](#-one-line-install)
@@ -54,6 +54,7 @@
 
 * **Zero-Dependency Footprint:** The entire bytecode runtime (`engine/foxvm.c`) is written in compact, portable C89/C99. It compiles into a **14 KB standalone executable** linking only `libc` and `libm`.
 * **Deterministic 25-Keyword Grammar:** No hidden syntax traps, no confusing inheritance hierarchies, and no bloated keyword catalogs. Exactly 25 official keywords govern the entire language specification.
+* **Tiered Chained Memory Arena:** Blazing 1-cycle pointer bump allocator backed by a pre-warmed 8MB standby arena (0 cost until touched), dynamically chained expansion up to a 64MB memory ceiling, and automatic safety trap protection against runaway infinite loops.
 * **Dual-Tier VM Architecture:** Rapid prototyping via a tree-walking interpreter, combined with blazing-fast bytecode dispatch in the compact C virtual machine (`foxvm.c`).
 * **First-Class Mobile Support:** Native offline execution and on-device ARM64 compilation inside Android Termux, plus a touch-native Mobile Studio IDE.
 * **Instant In-Browser WASM:** Runs natively inside any modern browser with WebAssembly compiled via Emscripten.
@@ -212,6 +213,7 @@ FoxVC guarantees language identity stability: **these 25 keywords are permanent.
 | **Developer Tooling** | `fmt` & `lint` & `test` | Canonical 4-space auto-formatter, static analysis linter, and native test runner | ✅ Completed |
 | **Language Server** | `foxvc lsp` | Full JSON-RPC 2.0 LSP daemon with real-time squigglies, autocomplete & hover | ✅ Completed |
 | **CVM 2.0 Native Parity** | Pure C Objects | Native struct member allocation & lookups on 8MB linear arena in `foxvm.c` | ✅ Completed |
+| **Tiered Chained Arena** | Zero-Latency Allocator | Pre-warmed 8MB standby block, dynamic chunk chaining & 64MB safety trap | ✅ Completed |
 | **Standard Shelves** | `data`, `audio`, `socket` | Native CSV/JSON/TOML, PCM WAV audio synthesis, and raw WebSocket framing | ✅ Completed |
 | **Unicode & AI Shelves** | `text` & `ai` | Full Unicode normalization, slugify, and zero-dependency local & cloud LLM agent orchestration | ✅ Completed |
 | **IDE Extension** | VS Code / Cursor | Official FoxVC marketplace extension with language client and TextMate grammar | ✅ Completed |
