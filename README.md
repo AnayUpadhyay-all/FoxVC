@@ -6,7 +6,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Playground Live](https://img.shields.io/badge/WASM_Playground-Live_in_Browser-orange.svg)](https://anayupadhyay-all.github.io/FoxVC/)
-[![Tests Passing](https://img.shields.io/badge/Tests-75%2F75%20Passing-brightgreen.svg)](#-verification--tests)
+[![Tests Passing](https://img.shields.io/badge/Tests-119%2F119%20Passing-brightgreen.svg)](#-verification--tests)
 [![Language Spec](https://img.shields.io/badge/Language%20Spec-v1.0.0-purple.svg)](FOXVC_SPEC.md)
 [![Engine Version](https://img.shields.io/badge/FoxVM%20Engine-v0.6.0--alpha-blue.svg)](FOXVC_CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-green.svg)](#-one-line-install)
@@ -57,6 +57,16 @@
 * **Dual-Tier VM Architecture:** Rapid prototyping via a tree-walking interpreter, combined with blazing-fast bytecode dispatch in the compact C virtual machine (`foxvm.c`).
 * **First-Class Mobile Support:** Native offline execution and on-device ARM64 compilation inside Android Termux, plus a touch-native Mobile Studio IDE.
 * **Instant In-Browser WASM:** Runs natively inside any modern browser with WebAssembly compiled via Emscripten.
+
+---
+
+## 📜 Project Origin & Timeline
+
+FoxVC was not built overnight on GitHub—it is the product of extensive offline local development before being open-sourced:
+
+* **🛠️ Local Development Began:** **September 2, 2026** — Started as an intensive offline engineering project. The lexer, AST parser, 8MB linear C memory arena (`foxvm.c`), 3-address register bytecode VM, and native Raylib graphics integration were researched, implemented, and refined across local development snapshots and automated test benches.
+* **🌐 First Public Release on GitHub:** **October 10, 2026** — Following rigorous local stabilization, end-to-end verification, and completion of the client-side WebAssembly browser engine, FoxVC was formally published open-source to GitHub under the MIT License (`v1.0.0`), shipping a fully functioning, battle-tested compiler from day one.
+* **🚀 Active Ecosystem Growth:** **November 2026** — Expanded with modular standard shelves (including `text` Unicode processing and `ai` LLM agent orchestration), full Language Server Protocol (LSP) daemon, VS Code extension, and the cross-platform Fox Den Studio.
 
 ---
 
@@ -224,7 +234,7 @@ Please teach me FoxVC step-by-step and help me write my first project!
 ```
 
 * 📄 **[llms.txt](llms.txt)** — Concise AI context specification.
-* 📚 **[llms-full.txt](llms-full.txt)** — Complete reference manual with all 10 shelves and APIs.
+* 📚 **[llms-full.txt](llms-full.txt)** — Complete reference manual with all 12 shelves and APIs.
 * 📐 **[GRAMMAR.md](GRAMMAR.md)** — Formal EBNF grammar rules and syntax structures.
 
 ---
