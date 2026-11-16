@@ -1,7 +1,7 @@
 # FoxVC Language & Runtime Specification
 
-**Language Specification Version:** 1.0.0  
-**Runtime Engine Version:** 0.6.0-alpha
+**Language Specification Version:** 2.0.0  
+**Runtime Engine Version:** 0.7.0
 
 ---
 
@@ -24,8 +24,8 @@ act emit pack mold pick alt otherwise pulse cycle spin halt skip say ask guard t
 ## 2. Decoupled Versioning Architecture
 
 FoxVC strictly decouples language specification semantics from runtime engine releases:
-* **Language Version (`1.0.0`):** Authoritative specification of keywords, grammar, and AST behavior.
-* **Engine Version (`0.6.0-alpha`):** Host engine implementation version across interpreters, compilers, and Studio.
+* **Language Version (`2.0.0`):** Authoritative specification of keywords, grammar, and AST behavior.
+* **Engine Version (`0.7.0`):** Host engine implementation version across interpreters, compilers, and Studio.
 The language version does not advance merely because engine internals change.
 
 ---

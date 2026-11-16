@@ -441,14 +441,26 @@ double run_bytecode(int* inst, int inst_len, double* num_consts, int num_consts_
                 int f_addr = inst[ip++];
                 int argc = inst[ip++];
                 int res_reg = inst[ip++];
-                if (call_sp >= MAX_CALL_STACK) {
-                    reset_memory_arena();
-                    return -999.0;
+
+                // Tail-Call Optimization (TCO):
+                // If inside a function (call_sp > 0) and the immediate next instruction is RETURN res_reg,
+                // reuse the current stack frame to enable infinite recursion in O(1) stack space.
+                int is_tail_call = (call_sp > 0) &&
+                                   (ip + argc + 1 < inst_len) &&
+                                   (inst[ip + argc] == 20) &&
+                                   (inst[ip + argc + 1] == res_reg);
+
+                if (!is_tail_call) {
+                    if (call_sp >= MAX_CALL_STACK) {
+                        reset_memory_arena();
+                        return -999.0;
+                    }
+                    for (int i = 0; i < MAX_REGS; i++) call_stack[call_sp].saved_regs[i] = regs[i];
+                    call_stack[call_sp].return_ip = ip + argc;
+                    call_stack[call_sp].target_reg = res_reg;
+                    call_sp++;
                 }
-                for (int i = 0; i < MAX_REGS; i++) call_stack[call_sp].saved_regs[i] = regs[i];
-                call_stack[call_sp].return_ip = ip + argc;
-                call_stack[call_sp].target_reg = res_reg;
-                call_sp++;
+
                 double temp[MAX_REGS];
                 for (int i = 0; i < argc; i++) temp[i] = regs[inst[ip + i]];
                 for (int i = 0; i < argc; i++) regs[i] = temp[i];

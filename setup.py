@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="foxvc",
-    version="0.6.0a0",
+    version="0.7.0",
     description="FoxVC Programming Language: Ultra-Compact 25-Keyword C Virtual Machine & Compiler",
     author="Anay Upadhyay",
     packages=find_packages(),

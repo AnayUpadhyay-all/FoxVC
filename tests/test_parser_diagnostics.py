@@ -64,8 +64,8 @@ class TestParserDiagnostics(unittest.TestCase):
         diag = res.diagnostics[0]
         self.assertEqual(diag.category, "SYNTAX")
         self.assertIsNotNone(diag.message)
-        self.assertEqual(res.metadata.get("language_version"), "1.0.0")
-        self.assertEqual(res.metadata.get("engine_version"), "0.6.0-alpha")
+        self.assertEqual(res.metadata.get("language_version"), "2.0.0")
+        self.assertEqual(res.metadata.get("engine_version"), "0.7.0")
 
 
 if __name__ == "__main__":

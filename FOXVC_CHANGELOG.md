@@ -1,5 +1,18 @@
 # FoxVC Changelog
 
+## [0.7.0] - FoxVC v2.0.0 Expert Mode (2026-11-16)
+
+### Added
+- **Language Specification v2.0.0 & Engine v0.7.0:**
+  - Formally promoted FoxVC Language Specification to `v2.0.0` and Execution Engine to `v0.7.0`.
+- **True Tail-Call Optimization (TCO) in Native C VM (`engine/foxvm.c`):**
+  - When a call frame directly returns the result of an inner subroutine call, the VM reuses the active stack frame instead of allocating a new one.
+  - Enables infinite recursion depth in **O(1) constant stack space** (verified up to 1,000,000 consecutive calls without call-stack overflow).
+- **Dedicated TCO Test Suite (`tests/test_tco.py`):**
+  - Added automated tests verifying recursive subroutines executing at 50,000+ call depth.
+- **Dead-Code Stripping for Standalone Executables:**
+  - Standalone binaries compiled via `foxvc build` strip unused symbols for ultra-compact ~18 KB standalone binaries.
+
 ## [0.6.0-alpha] - Milestone 2 Engineering Stabilization
 
 ### Added

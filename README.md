@@ -6,9 +6,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Playground Live](https://img.shields.io/badge/WASM_Playground-Live_in_Browser-orange.svg)](https://anayupadhyay-all.github.io/FoxVC/)
-[![Tests Passing](https://img.shields.io/badge/Tests-125%2F125%20Passing-brightgreen.svg)](#-verification--tests)
-[![Language Spec](https://img.shields.io/badge/Language%20Spec-v1.0.0-purple.svg)](FOXVC_SPEC.md)
-[![Engine Version](https://img.shields.io/badge/FoxVM%20Engine-v0.6.0--alpha-blue.svg)](FOXVC_CHANGELOG.md)
+[![Tests Passing](https://img.shields.io/badge/Tests-127%2F127%20Passing-brightgreen.svg)](#-verification--tests)
+[![Language Spec](https://img.shields.io/badge/Language%20Spec-v2.0.0-purple.svg)](FOXVC_SPEC.md)
+[![Engine Version](https://img.shields.io/badge/FoxVM%20Engine-v0.7.0-blue.svg)](FOXVC_CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS%20%7C%20Windows%20%7C%20Android-green.svg)](#-one-line-install)
 
 <br/>

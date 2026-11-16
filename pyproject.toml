@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "foxvc"
-version = "0.6.0a0"
+version = "0.7.0"
 description = "FoxVC: An ultra-compact, 25-keyword programming language with C bytecode VM and standalone binary compiler"
 readme = "README.md"
 requires-python = ">=3.8"

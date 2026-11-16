@@ -4,10 +4,10 @@ Enforces the strict decoupling of Language Specification Version and Engine Vers
 """
 
 # FoxVC Programming Language Specification Version
-FOXVC_LANGUAGE_VERSION = "1.0.0"
+FOXVC_LANGUAGE_VERSION = "2.0.0"
 
 # FoxVC Execution Engine / Runtime Version
-FOXVC_ENGINE_VERSION = "0.6.0-alpha"
+FOXVC_ENGINE_VERSION = "0.7.0"
 
 # Backward-compatibility alias
 FOXVC_RUNTIME_VERSION = FOXVC_ENGINE_VERSION
