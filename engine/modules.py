@@ -121,7 +121,7 @@ class ModuleManager:
         from engine.shelves import (
             get_math_shelf, get_graphics_shelf, get_file_shelf, get_crypto_shelf,
             get_net_shelf, get_db_shelf, get_system_shelf, get_data_shelf,
-            get_audio_shelf, get_socket_shelf
+            get_audio_shelf, get_socket_shelf, get_text_shelf
         )
         builtin_shelves = {
             "math": lambda: get_math_shelf(),
@@ -134,6 +134,7 @@ class ModuleManager:
             "data": lambda: get_data_shelf(security_policy),
             "audio": lambda: get_audio_shelf(security_policy),
             "socket": lambda: get_socket_shelf(security_policy),
+            "text": lambda: get_text_shelf(),
         }
         if spec in builtin_shelves:
             shelf_dict = builtin_shelves[spec]()
