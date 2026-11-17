@@ -1,6 +1,8 @@
 import os
 import struct
 import ctypes
+import shutil
+import subprocess
 from engine.bytecode import Op
 
 
@@ -63,6 +65,19 @@ def deserialize_foxc(filepath: str):
 class FoxCVM:
     def __init__(self):
         so_path = os.path.join(os.path.dirname(__file__), 'foxvm.so')
+        if not os.path.exists(so_path):
+            c_path = os.path.join(os.path.dirname(__file__), 'foxvm.c')
+            if os.path.exists(c_path):
+                compiler = shutil.which("gcc") or shutil.which("clang")
+                if compiler:
+                    try:
+                        subprocess.run(
+                            [compiler, "-O3", "-shared", "-fPIC", c_path, "-o", so_path, "-lm"],
+                            check=True,
+                            capture_output=True,
+                        )
+                    except Exception:
+                        pass
         if not os.path.exists(so_path):
             raise FileNotFoundError(f"Native binary not found at {so_path}. Build it using gcc first!")
         

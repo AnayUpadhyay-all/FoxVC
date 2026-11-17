@@ -66,6 +66,18 @@ class TestFoxVCV1Features(unittest.TestCase):
         codes = [m.code for m in msgs]
         self.assertIn("E003", codes)
 
+    def test_linter_detects_unreachable_code_after_emit(self):
+        code = "act test()\n    emit 1\n    say \"unreachable\"\n"
+        msgs = self.linter.lint_source(code)
+        codes = [m.code for m in msgs]
+        self.assertIn("W003", codes)
+
+    def test_linter_ignores_otherwise_after_emit(self):
+        code = "act test(x)\n    pick x > 0\n        emit 1\n    otherwise\n        emit 0\n"
+        msgs = self.linter.lint_source(code)
+        codes = [m.code for m in msgs]
+        self.assertNotIn("W003", codes)
+
     # --- 3. Native Test Runner Tests ---
     def test_runner_executes_suite(self):
         code = (

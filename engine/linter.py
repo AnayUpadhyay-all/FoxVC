@@ -140,23 +140,30 @@ class FoxLinter:
         for idx, token in enumerate(tokens):
             val = getattr(token, "value", "")
             t_line = getattr(token, "line", 1)
-            t_col = getattr(token, "col", 1)
 
             if val in ("emit", "halt", "skip"):
-                # Check if there is another statement on the next line within the same block before '}'
-                # Simple check: next non-comment line before '}' at same or greater indentation
-                line_no = t_line
-                if line_no < len(lines):
-                    next_content = lines[line_no].strip()
-                    if next_content and not next_content.startswith("}") and not next_content.startswith("#") and not next_content.startswith("//"):
-                        # If inside block and not a closing brace
+                line_idx = t_line - 1  # 0-indexed line where emit appeared
+                if 0 <= line_idx < len(lines):
+                    line_raw = lines[line_idx]
+                    current_indent = len(line_raw) - len(line_raw.lstrip())
+                    for next_idx in range(line_idx + 1, len(lines)):
+                        next_raw = lines[next_idx]
+                        next_content = next_raw.strip()
+                        if not next_content or next_content.startswith("#") or next_content.startswith("//"):
+                            continue
+                        next_indent = len(next_raw) - len(next_raw.lstrip())
+                        # If next line has less indentation or is an alternative branch, block has ended
+                        if next_indent < current_indent or next_content.startswith("otherwise") or next_content.startswith("alt") or next_content.startswith("}"):
+                            break
+                        # Next executable statement is in the same block after emit/halt/skip
                         messages.append(
                             LintMessage(
-                                "W003", "warning", line_no + 1, 1,
+                                "W003", "warning", next_idx + 1, 1,
                                 f"Unreachable code detected after '{val}' statement.",
-                                get_line(line_no + 1)
+                                get_line(next_idx + 1)
                             )
                         )
+                        break
 
         # Sort messages by line and column
         messages.sort(key=lambda m: (m.line, m.col))

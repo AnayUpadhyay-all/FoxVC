@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import tempfile
 import unittest
 import subprocess
@@ -102,6 +103,7 @@ say answer
         self.assertEqual(proc.returncode, 0)
         self.assertEqual(proc.stdout.strip(), "42")
 
+    @unittest.skipUnless(shutil.which("clang"), "Clang is required for LLVM IR emission")
     def test_emit_llvm_ir(self):
         fox_file = os.path.join(self.temp_dir.name, "llvm_test.fox")
         with open(fox_file, "w") as f:
