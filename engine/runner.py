@@ -254,7 +254,7 @@ def run_foxvc(
                     )
                 else:
                     cvm = FoxCVM()
-                    val = cvm.run(instructions)
+                    val = cvm.run(code_pkg)
                     res = ExecutionResult(
                         success=True,
                         output="",
