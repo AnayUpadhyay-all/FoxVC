@@ -76,7 +76,7 @@ jobs:
           )
           if not core.success:
               raise SystemExit(f"Core control-flow/recovery run failed: {core.error}")
-          if "ALL TCO AND CORE STRESS CHECKS PASSED" not in source:
+          if "ALL TCO AND CORE STRESS CHECKS PASSED" not in core.output:
               raise SystemExit("Stress fixture is missing its completion marker")
           print("TCO native VM and core interpreter checks completed.")
           PY
