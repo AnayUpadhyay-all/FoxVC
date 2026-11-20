@@ -54,6 +54,7 @@
 
 * **Zero-Dependency Footprint:** The entire bytecode runtime (`engine/foxvm.c`) is written in compact, portable C89/C99. It compiles into a **14 KB standalone executable** linking only `libc` and `libm`.
 * **Deterministic 25-Keyword Grammar:** No hidden syntax traps, no confusing inheritance hierarchies, and no bloated keyword catalogs. Exactly 25 official keywords govern the entire language specification.
+* **Constant O(1) Tail-Call Optimization (TCO):** Native C VM (`engine/foxvm.c`) reuses active stack frames for tail-recursive subroutines, unlocking infinite recursion depth in constant stack space without stack overflow (tested up to 1,000,000+ consecutive calls).
 * **Tiered Chained Memory Arena:** Blazing 1-cycle pointer bump allocator backed by a pre-warmed 8MB standby arena (0 cost until touched), dynamically chained expansion up to a 64MB memory ceiling, and automatic safety trap protection against runaway infinite loops.
 * **Dual-Tier VM Architecture:** Rapid prototyping via a tree-walking interpreter, combined with blazing-fast bytecode dispatch in the compact C virtual machine (`foxvm.c`).
 * **First-Class Mobile Support:** Native offline execution and on-device ARM64 compilation inside Android Termux, plus a touch-native Mobile Studio IDE.
@@ -68,6 +69,7 @@ FoxVC was not built overnight on GitHub—it is the product of extensive offline
 * **🛠️ Local Development Began:** **September 2, 2026** — Started as an intensive offline engineering project. The lexer, AST parser, 8MB linear C memory arena (`foxvm.c`), 3-address register bytecode VM, and native Raylib graphics integration were researched, implemented, and refined across local development snapshots and automated test benches.
 * **🌐 First Public Release on GitHub:** **October 10, 2026** — Following rigorous local stabilization, end-to-end verification, and completion of the client-side WebAssembly browser engine, FoxVC was formally published open-source to GitHub under the MIT License (`v1.0.0`), shipping a fully functioning, battle-tested compiler from day one.
 * **🚀 Active Ecosystem Growth:** **November 2026** — Expanded with modular standard shelves (including `text` Unicode processing and `ai` LLM agent orchestration), full Language Server Protocol (LSP) daemon, VS Code extension, and the cross-platform Fox Den Studio.
+* **⚡ FoxVC v2.0.0 & Engine v0.7.0 Released:** **November 16, 2026** — Promoted language specification to `v2.0.0` Expert Mode and engine to `v0.7.0`. Shipped true native Tail-Call Optimization (TCO) in `engine/foxvm.c` with constant $O(1)$ stack space, automated TCO test suites (`tests/test_tco.py`), and dead-code stripping for standalone binaries.
 
 ---
 
@@ -217,6 +219,7 @@ FoxVC guarantees language identity stability: **these 25 keywords are permanent.
 | **Standard Shelves** | `data`, `audio`, `socket` | Native CSV/JSON/TOML, PCM WAV audio synthesis, and raw WebSocket framing | ✅ Completed |
 | **Unicode & AI Shelves** | `text` & `ai` | Full Unicode normalization, slugify, and zero-dependency local & cloud LLM agent orchestration | ✅ Completed |
 | **IDE Extension** | VS Code / Cursor | Official FoxVC marketplace extension with language client and TextMate grammar | ✅ Completed |
+| **FoxVC v2.0.0 & TCO** | Engine v0.7.0 | True native Tail-Call Optimization (TCO) in $O(1)$ stack space & dead-code stripping | ✅ Completed |
 
 ---
 
@@ -262,7 +265,7 @@ Because FoxVC is clean, compact, and deterministic, **you can learn the architec
 *16-year-old student, systems enthusiast, and compiler builder*
 
 [![GitHub: AnayUpadhyay-all](https://img.shields.io/badge/GitHub-AnayUpadhyay--all-181717?style=flat&logo=github)](https://github.com/AnayUpadhyay-all)
-[![Project: FoxVC](https://img.shields.io/badge/Language-FoxVC%20v1.0-FF7A00?style=flat)](https://github.com/AnayUpadhyay-all/FoxVC)
+[![Project: FoxVC](https://img.shields.io/badge/Language-FoxVC%20v2.0-FF7A00?style=flat)](https://github.com/AnayUpadhyay-all/FoxVC)
 
 </div>
 
