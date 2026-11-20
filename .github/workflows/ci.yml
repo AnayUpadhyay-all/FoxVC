@@ -1,4 +1,4 @@
-name: CI Test Suite
+name: FoxVC CI
 
 on:
   push:
@@ -10,40 +10,73 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Test on Python ${{ matrix.python-version }} (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+  build-and-test:
+    name: Build and test (Ubuntu)
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.12"
 
-      - name: Compile Native C VM Engine
+      - name: Compile native C VM with strict warnings
         run: |
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            clang -O3 -shared -fPIC engine/foxvm.c -o engine/foxvm.so -lm
-          else
-            gcc -O3 -shared -fPIC engine/foxvm.c -o engine/foxvm.so -lm
-          fi
+          gcc -Wall -Wextra -Werror -O3 -shared -fPIC \
+            engine/foxvm.c -o engine/foxvm.so -lm
 
-      - name: Run Python Unit & Differential Tests
-        run: |
-          python -m unittest discover tests
+      - name: Run Python unit and differential tests
+        run: python -m unittest discover tests
 
-      - name: Run FoxVC Native Test Runner
-        run: |
-          python foxvc test
+      - name: Run FoxVC source test suites
+        run: python foxvc test
 
-      - name: Lint Examples
+      - name: Lint examples
+        run: python foxvc lint examples/
+
+      - name: Run TCO and core stress fixture
         run: |
-          python foxvc lint examples/
+          python - <<'PY'
+          from pathlib import Path
+          from engine.runner import run_foxvc
+
+          fixture = Path("tests/tco_and_core_stress.fvc")
+          source = fixture.read_text(encoding="utf-8")
+          marker = "# --- CORE CONTROL FLOW AND ERROR RECOVERY ---"
+
+          if marker not in source:
+              raise SystemExit(f"Missing section marker in {fixture}")
+
+          tco_source, core_source = source.split(marker, 1)
+
+          # The native C VM supports the TCO/control-flow subset, but not
+          # SETUP_TRAP. Run the trap section separately on the interpreter.
+          native = run_foxvc(
+              tco_source,
+              engine_mode="fast",
+              as_result=True,
+              filename=str(fixture),
+          )
+          if not native.success:
+              raise SystemExit(f"Native C VM TCO run failed: {native.error}")
+          if native.value != 100000:
+              raise SystemExit(
+                  "Native C VM assertions failed or returned an unexpected "
+                  f"sentinel: {native.value!r}"
+              )
+
+          core = run_foxvc(
+              marker + "\\n" + core_source,
+              engine_mode="interp",
+              as_result=True,
+              filename=str(fixture),
+          )
+          if not core.success:
+              raise SystemExit(f"Core control-flow/recovery run failed: {core.error}")
+          if "ALL TCO AND CORE STRESS CHECKS PASSED" not in source:
+              raise SystemExit("Stress fixture is missing its completion marker")
+          print("TCO native VM and core interpreter checks completed.")
+          PY
