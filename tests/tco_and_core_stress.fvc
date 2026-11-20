@@ -1,0 +1,47 @@
+# FoxVC v2.0.0 / Engine v0.7.0
+# TCO checks run through the native C VM; trap/recovery checks run through
+# the authoritative interpreter because SETUP_TRAP is not a native C VM opcode.
+
+act tailCountdown(n, acc)
+    pick n <= 0
+        emit acc
+    emit tailCountdown(n - 1, acc + 1)
+
+act fastFib(n, a, b)
+    pick n <= 0
+        emit a
+    emit fastFib(n - 1, b, a + b)
+
+# --- NATIVE C VM: TAIL-CALL OPTIMIZATION ---
+
+lock countdown_result = tailCountdown(100000, 0)
+guard countdown_result == 100000
+say "PASS: tail-recursive accumulator countdown reached 100000"
+
+lock fib_result = fastFib(40, 0, 1)
+guard fib_result == 102334155
+say "PASS: fastFib(40, 0, 1) returned 102334155"
+
+# --- CORE CONTROL FLOW AND ERROR RECOVERY ---
+
+shift branch_result = 0
+pick 9 > 4
+    branch_result = 1
+alt 9 == 4
+    branch_result = 2
+otherwise
+    branch_result = 3
+
+guard branch_result == 1
+say "PASS: pick / alt / otherwise control flow"
+
+shift recovered = 0
+trap
+    impossible_quotient = 10 / 0
+otherwise
+    recovered = 1
+
+guard recovered == 1
+say "PASS: trap / otherwise recovered from division by zero"
+
+say "ALL TCO AND CORE STRESS CHECKS PASSED"
