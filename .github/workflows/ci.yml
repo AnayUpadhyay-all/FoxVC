@@ -69,7 +69,7 @@ jobs:
               )
 
           core = run_foxvc(
-              marker + "\\n" + core_source,
+              core_source,
               engine_mode="interp",
               as_result=True,
               filename=str(fixture),
